@@ -67,7 +67,7 @@ int db_init(void)
     if (rc != SQLITE_OK)
     {
         wprintf(
-            L"Failed to open database\n"
+            L"[DATABASE][ERROR][003] Failed to open database\n"
         );
 
         return 0;
@@ -105,7 +105,7 @@ int db_init(void)
     if (rc != SQLITE_OK)
     {
         wprintf(
-            L"Create table failed: %hs\n",
+            L"[DATABASE][ERROR][004] Create table failed: %hs\n",
             error
         );
 
@@ -115,7 +115,7 @@ int db_init(void)
     }
 
     wprintf(
-        L"Database initialized\n"
+        L"[DATABASE][SUCCESS] Database initialized\n"
     );
 
     return 1;
@@ -177,7 +177,7 @@ int db_insert_activity(
     if (rc != SQLITE_OK)
     {
         wprintf(
-            L"Prepare failed: %hs\n",
+            L"[DATABASE][ERROR][005] Prepare failed: %hs\n",
             sqlite3_errmsg(g_db)
         );
 
@@ -243,7 +243,7 @@ int db_insert_activity(
     if (rc != SQLITE_DONE)
     {
         wprintf(
-            L"Insert failed: %hs\n",
+            L"[DATABASE][ERROR][006] Insert failed: %hs\n",
             sqlite3_errmsg(g_db)
         );
 
@@ -251,7 +251,7 @@ int db_insert_activity(
     }
 
     wprintf(
-        L"Activity saved\n"
+        L"[DATABASE][SUCCESS] Activity saved\n"
     );
 
     return 1;
@@ -318,7 +318,7 @@ void db_print_unsynced(void)
             sqlite3_column_int(stmt, 2);
 
         wprintf(
-            L"[UNSYNCED] id=%d process=%ls duration=%d\n",
+            L"[DATABASE][UNSYNCED] id=%d process=%ls duration=%d\n",
             id,
             process,
             duration

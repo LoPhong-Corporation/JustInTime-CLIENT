@@ -145,7 +145,7 @@ int backup_create_snapshot(void)
     if (ok)
     {
         wprintf(
-            L"[BACKUP] Da sao luu du lieu vao %hs\n",
+            L"[BACKUP][SUCCESS] Backup in %hs\n",
             filepath
         );
 
@@ -154,7 +154,7 @@ int backup_create_snapshot(void)
     else
     {
         wprintf(
-            L"[BACKUP] Sao luu that bai\n"
+            L"[BACKUP][ERROR][002] Backup failed.\n"
         );
     }
 

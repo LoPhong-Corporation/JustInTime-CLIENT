@@ -1,0 +1,17 @@
+BẢNG MÃ LỖI JUSTINTIME AGENT (Vietnamese)
+[Tên phần][Trạng thái][Mã lỗi]
+
+001: Database initialization failed.
+002: Backup failed.
+003: Failed to open database.
+004: Failed to create table.
+005: Failed to prepare data.
+006: Insert failed.
+007: Cannot create JSON body.
+008: WinHttpOpen failed. 
+009: Supabase returns HTTP error
+010: Failed to send request
+011: WinHttpOpenRequest failed
+012: WinHttpConnect failed
+013: Failed to update database for record ...
+014: Send record failed

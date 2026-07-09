@@ -86,7 +86,7 @@ int main(void)
     );
 
     wprintf(
-        L"JustInTime Agent Started\n"
+        L"[CORE][SUCCESS] JustInTime Agent Started\n"
     );
 
     /*
@@ -95,7 +95,7 @@ int main(void)
     if (!db_init())
     {
         wprintf(
-            L"Database initialization failed.\n"
+            L"[CORE][ERROR][001] Database initialization failed.\n"
         );
 
         return 1;

@@ -21,13 +21,13 @@ void sync_pending_records(void)
     if (count == 0)
     {
         wprintf(
-            L"[SYNC] No pending records\n"
+            L"[SYNC][NONE] No pending records\n"
         );
         return;
     }
 
     wprintf(
-        L"[SYNC] Found %d record(s)\n",
+        L"[SYNC][SUCCESS] Found %d record(s)\n",
         count
     );
 
@@ -42,14 +42,14 @@ void sync_pending_records(void)
             )
             {
                 wprintf(
-                    L"[SYNC] Record %d synced\n",
+                    L"[SYNC][SUCCESS] Record %d synced\n",
                     records[i].id
                 );
             }
             else
             {
                 wprintf(
-                    L"[SYNC] Failed to update database for record %d\n",
+                    L"[SYNC][ERROR][013] Failed to update database for record %d\n",
                     records[i].id
                 );
             }
@@ -57,7 +57,7 @@ void sync_pending_records(void)
         else
         {
             wprintf(
-                L"[SYNC] Send failed: %d\n",
+                L"[SYNC][ERROR][014] Send failed: %d\n",
                 records[i].id
             );
         }

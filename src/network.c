@@ -127,7 +127,7 @@ int network_send_record(
 
     if (body_len <= 0 || body_len >= (int)sizeof(body))
     {
-        wprintf(L"[SYNC] Khong the tao JSON body (qua dai hoac loi)\n");
+        wprintf(L"[SYNC][ERROR][007] Cannot create JSON body (too long or corrupt data)\n");
         return 0;
     }
 
@@ -159,7 +159,7 @@ int network_send_record(
 
     if (!hSession)
     {
-        wprintf(L"[SYNC] WinHttpOpen that bai (%lu)\n", GetLastError());
+        wprintf(L"[SYNC][ERROR][008] WinHttpOpen failed (%lu)\n", GetLastError());
         return 0;
     }
 
@@ -271,7 +271,7 @@ int network_send_record(
                     resp_body[total_read] = '\0';
 
                     wprintf(
-                        L"[SYNC] Supabase tra ve loi HTTP %lu: %hs\n",
+                        L"[SYNC][ERROR][009] Supabase returns HTTP error %lu: %hs\n",
                         status,
                         resp_body
                     );
@@ -280,7 +280,7 @@ int network_send_record(
             else
             {
                 wprintf(
-                    L"[SYNC] Gui request that bai (%lu)\n",
+                    L"[SYNC][ERROR][010] Failed to send request (%lu)\n",
                     GetLastError()
                 );
             }
@@ -289,14 +289,14 @@ int network_send_record(
         }
         else
         {
-            wprintf(L"[SYNC] WinHttpOpenRequest that bai (%lu)\n", GetLastError());
+            wprintf(L"[SYNC][ERROR][011] WinHttpOpenRequest failed (%lu)\n", GetLastError());
         }
 
         WinHttpCloseHandle(hConnect);
     }
     else
     {
-        wprintf(L"[SYNC] WinHttpConnect that bai (%lu)\n", GetLastError());
+        wprintf(L"[SYNC][ERROR][012] WinHttpConnect failed (%lu)\n", GetLastError());
     }
 
     WinHttpCloseHandle(hSession);
