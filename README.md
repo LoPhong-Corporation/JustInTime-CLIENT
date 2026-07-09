@@ -1,6 +1,6 @@
-# JustInTime Agent
+# JustInTime Client
 
-> A lightweight Windows activity monitoring agent with offline synchronization and cloud-ready architecture.
+> A lightweight native Windows activity monitoring agent written in C.
 
 ![Platform](https://img.shields.io/badge/Platform-Windows-blue)
 ![Language](https://img.shields.io/badge/Language-C-success)
@@ -8,90 +8,149 @@
 ![Database](https://img.shields.io/badge/Database-SQLite-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
----
+JustInTime Client is a high-performance Windows background agent that monitors user activity, records application usage locally using SQLite, and synchronizes data securely to the cloud through **Supabase Edge Functions**.
 
-## 📖 Overview
-
-**JustInTime** is an open-source Windows activity monitoring system designed to track application usage while remaining lightweight, modular, and privacy-friendly.
-
-Unlike traditional monitoring software, JustInTime follows an **offline-first architecture**:
-
-- Activity is collected locally.
-- Data is stored in SQLite.
-- Records are synchronized only when a network connection is available.
-- The backend and dashboard are completely separated from the agent.
-
-The long-term goal is to build a complete productivity platform consisting of:
-
-- Windows Agent
-- REST API
-- Web Dashboard
-- Mobile Application
-- AI-powered Productivity Analysis
+The project follows an **offline-first** architecture, ensuring that activity data is never lost even when the device is temporarily offline.
 
 ---
 
-# ✨ Features
+## Features
 
-## Current
+### ✅ Currently Implemented
 
-- Active window monitoring
-- Process detection
-- Window title detection
-- Usage duration tracking
-- SQLite local storage
-- Unicode support (UTF-16 / UTF-8)
-- Offline synchronization queue
+- Foreground application monitoring
+- Active window title detection
+- Process name detection
+- Activity duration tracking
+- SQLite local database
+- UTF-16 ⇄ UTF-8 conversion
+- Full Unicode support
 - Device identification
-- Modular architecture
+- JSON serialization
+- HTTP communication
+- Secure synchronization through Supabase Edge Functions
+- Offline queue
+- Automatic synchronization
+- Unsynced record management
+
+---
+
+## Work In Progress
+
+- Retry mechanism
+- Configuration system
+- Logging improvements
+- Better error handling
 
 ---
 
 ## Planned
 
-- WinHTTP client
-- HTTPS communication
-- Batch synchronization
-- Retry mechanism
-- Configuration system
 - Windows Service
-- Auto start
-- Crash recovery
-- Logging
+- Auto Start
+- Background Worker
 - Dashboard
-- Productivity reports
-- AI insights
+- Multi-device synchronization
+- Automatic Update
+- Installer
 
 ---
 
-# 🏗 Architecture
+# Architecture
 
-```
-                 JustInTime
-
-                    Cloud
-                      │
-      ┌───────────────┼───────────────┐
-      │                               │
-      ▼                               ▼
- Windows Agent                  Web Dashboard
-      │                               │
-      └───────────────┬───────────────┘
-                      │
-                  REST API
-                      │
-                 PostgreSQL
-                      │
-                AI Analytics
+```text
+                     Windows
+                        │
+                        ▼
+          ┌────────────────────────┐
+          │ Activity Monitor       │
+          └────────────┬───────────┘
+                       │
+                       ▼
+          ┌────────────────────────┐
+          │ SQLite Local Database  │
+          └────────────┬───────────┘
+                       │
+                       ▼
+          ┌────────────────────────┐
+          │ Sync Queue             │
+          └────────────┬───────────┘
+                       │
+                       ▼
+          ┌────────────────────────┐
+          │ HTTP Client            │
+          └────────────┬───────────┘
+                       │
+                       ▼
+          ┌────────────────────────┐
+          │ Supabase Edge Function │
+          └────────────┬───────────┘
+                       │
+                       ▼
+          ┌────────────────────────┐
+          │ PostgreSQL Database    │
+          └────────────────────────┘
 ```
 
 ---
 
-# 📂 Project Structure
+# Why Edge Functions?
+
+The client **never communicates directly with the database**.
+
+Instead, every synchronization request is sent to a **Supabase Edge Function**, which is responsible for:
+
+- Request validation
+- Authentication
+- Data verification
+- Business logic
+- Database access
+
+This architecture improves security by preventing the client from having direct database access.
+
+---
+
+# Offline First Design
+
+Every activity is stored locally before being synchronized.
+
+```text
+Foreground Window
+
+↓
+
+SQLite
+
+↓
+
+Unsynced Queue
+
+↓
+
+HTTP Request
+
+↓
+
+Edge Function
+
+↓
+
+Cloud Database
+
+↓
+
+Mark Record As Synced
+```
+
+If the network is unavailable, records remain safely stored in SQLite and will be synchronized automatically once the connection is restored.
+
+---
+
+# Project Structure
 
 ```
-JustInTime
-│
+JustInTime-CLIENT/
+
 ├── include/
 │   ├── activity.h
 │   ├── database.h
@@ -111,6 +170,10 @@ JustInTime
 ├── third_party/
 │   └── sqlite/
 │
+├── docs/
+│
+├── assets/
+│
 ├── CMakeLists.txt
 │
 └── README.md
@@ -118,170 +181,175 @@ JustInTime
 
 ---
 
-# ⚙ How It Works
+# Database
+
+Current local database table
+
+| Column | Type |
+|---------|------|
+| id | INTEGER |
+| device_id | TEXT |
+| process_name | TEXT |
+| window_title | TEXT |
+| duration_seconds | INTEGER |
+| start_time | INTEGER |
+| end_time | INTEGER |
+| synced | INTEGER |
+| created_at | DATETIME |
+
+---
+
+# Technologies
+
+- C17
+- WinAPI
+- SQLite3
+- WinHTTP
+- Supabase Edge Functions
+- PostgreSQL
+- CMake
+
+---
+
+# Build
+
+Requirements
+
+- Windows 10 or newer
+- Microsoft Visual C++ (MSVC)
+- CMake
+
+```bash
+git clone https://github.com/LoPhong-Corporation/JustInTime-CLIENT.git
+
+cd JustInTime-CLIENT
+
+mkdir build
+
+cd build
+
+cmake ..
+
+cmake --build .
+```
+
+---
+
+# Current Development Status
+
+| Module | Status |
+|---------|:------:|
+| Activity Monitor | ✅ |
+| SQLite Database | ✅ |
+| Unicode Support | ✅ |
+| Device ID | ✅ |
+| JSON Serialization | ✅ |
+| HTTP Client | ✅ |
+| Sync Engine | ✅ |
+| Supabase Edge Functions | ✅ |
+| Offline Queue | ✅ |
+| Retry Queue | 🚧 |
+| Configuration | 🚧 |
+| Windows Service | ⏳ |
+| Dashboard | ⏳ |
+| Installer | ⏳ |
+
+---
+
+# Roadmap
+
+## Version 0.1
+
+- Activity Monitor
+- SQLite
+- Unicode
+- Local Storage
+- HTTP Sync
+- Supabase Edge Functions
+
+---
+
+## Version 0.2
+
+- Retry Queue
+- Configuration
+- Logging
+- Error Recovery
+
+---
+
+## Version 0.3
+
+- Windows Service
+- Background Worker
+- Auto Start
+
+---
+
+## Version 0.4
+
+- Dashboard
+- Statistics
+- Multi-device Support
+
+---
+
+## Version 1.0
+
+- Stable Release
+- Automatic Update
+- Installer
+- Complete Documentation
+
+---
+
+# Future Ecosystem
 
 ```
-Windows
+JustInTime
 
-      │
-      ▼
-
-Monitor Active Window
-
-      │
-      ▼
-
-Collect Activity
-
-      │
-      ▼
-
-SQLite Database
-
-      │
-      ▼
-
-Unsynced Queue
-
-      │
-      ▼
-
-Network Layer
-
-      │
-      ▼
-
-REST API
-
-      │
-      ▼
-
-PostgreSQL
-
-      │
-      ▼
-
-Dashboard
+├── JustInTime-CLIENT
+│     Windows Agent
+│
+├── JustInTime-SERVER
+│     REST API
+│
+├── JustInTime-Dashboard
+│     Web Dashboard
+│
+├── JustInTime-Installer
+│
+└── Documentation
 ```
 
 ---
 
-# 🚀 Roadmap
+# Documentation
 
-## Phase 1 — Windows Agent
+Project documentation is available in the GitHub Wiki.
 
-- [x] Active Window Monitor
-- [x] Process Detection
-- [x] Usage Tracking
-- [x] SQLite Storage
-- [x] Device ID
-- [x] Unicode Support
-- [x] Sync Queue
-- [x] Modular Structure
-- [ ] WinHTTP
-- [ ] HTTPS
-- [ ] Batch Upload
-- [ ] Retry Logic
-- [ ] Config System
+Topics include:
+
+- Architecture
+- Activity Monitor
+- Database
+- Sync Engine
+- Network Layer
+- Configuration
+- Development Guide
 
 ---
 
-## Phase 2 — Windows Service
+# Contributing
 
-- [ ] Windows Service
-- [ ] Auto Start
-- [ ] Watchdog
-- [ ] Crash Recovery
-- [ ] Logging
+Contributions, issues, and feature requests are welcome.
+
+Please open an Issue before submitting a Pull Request for large changes.
 
 ---
 
-## Phase 3 — Backend
-
-- [ ] FastAPI
-- [ ] Authentication
-- [ ] Device Registration
-- [ ] PostgreSQL
-- [ ] Activity API
-- [ ] Statistics Engine
-
----
-
-## Phase 4 — Dashboard
-
-- [ ] Login
-- [ ] Timeline
-- [ ] Daily Statistics
-- [ ] Weekly Statistics
-- [ ] Charts
-- [ ] Export
-
----
-
-## Phase 5 — AI
-
-- [ ] Productivity Score
-- [ ] Habit Detection
-- [ ] Weekly Reports
-- [ ] Smart Suggestions
-
----
-
-# 🛠 Technologies
-
-| Component | Technology |
-|----------|------------|
-| Language | C (MSVC) |
-| Platform | Windows |
-| Database | SQLite3 |
-| Network | WinHTTP *(planned)* |
-| Backend | FastAPI *(planned)* |
-| Database Server | PostgreSQL *(planned)* |
-| Dashboard | React *(planned)* |
-
----
-
-# 🎯 Design Goals
-
-JustInTime is designed with several core principles:
-
-- Lightweight
-- Offline-first
-- Modular
-- Unicode-safe
-- Low CPU usage
-- Low memory footprint
-- Easy to maintain
-- Easy to extend
-- Production-ready architecture
-
----
-
-# 📌 Development Status
-
-Current version focuses on building a stable Windows Agent.
-
-The backend and dashboard will be developed after the networking layer is completed.
-
----
-
-# 📜 License
+# License
 
 This project is licensed under the MIT License.
 
----
-
-## ⭐ Contributing
-
-Contributions, ideas, and bug reports are welcome.
-
-If you'd like to contribute:
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Commit your changes.
-4. Open a Pull Request.
-
----
-
-Made with ❤️ by **LoPhong Corporation**
+See the [LICENSE](LICENSE) file for more information.
