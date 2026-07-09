@@ -1,4 +1,4 @@
-# WellingBeing
+# JustInTime Agent
 
 > A lightweight Windows activity monitoring agent with offline synchronization and cloud-ready architecture.
 
@@ -12,9 +12,9 @@
 
 ## 📖 Overview
 
-**WellingBeing** is an open-source Windows activity monitoring system designed to track application usage while remaining lightweight, modular, and privacy-friendly.
+**JustInTime** is an open-source Windows activity monitoring system designed to track application usage while remaining lightweight, modular, and privacy-friendly.
 
-Unlike traditional monitoring software, WellingBeing follows an **offline-first architecture**:
+Unlike traditional monitoring software, JustInTime follows an **offline-first architecture**:
 
 - Activity is collected locally.
 - Data is stored in SQLite.
@@ -67,7 +67,7 @@ The long-term goal is to build a complete productivity platform consisting of:
 # 🏗 Architecture
 
 ```
-                 WellingBeing
+                 JustInTime
 
                     Cloud
                       │
@@ -90,7 +90,7 @@ The long-term goal is to build a complete productivity platform consisting of:
 # 📂 Project Structure
 
 ```
-WellingBeing
+JustInTime
 │
 ├── include/
 │   ├── activity.h
@@ -243,7 +243,7 @@ Dashboard
 
 # 🎯 Design Goals
 
-WellingBeing is designed with several core principles:
+JustInTime is designed with several core principles:
 
 - Lightweight
 - Offline-first
