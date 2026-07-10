@@ -4,12 +4,15 @@
 #include "../include/database.h"
 #include "../include/device.h"
 #include "../include/jsonutil.h"
+#include "../include/settings.h"
+#include "../include/error_codes.h"
 
 #include "../third_party/sqlite/sqlite3.h"
 
 #include <windows.h>
 
 #include <stdio.h>
+#include <time.h>
 
 static sqlite3* g_db = NULL;
 
@@ -56,18 +59,45 @@ static void utf8_to_wide(
 
 /*
  * Khởi tạo database
+ *
+ * QUAN TRỌNG: dùng đường dẫn TUYỆT ĐỐI tại
+ * %APPDATA%\JustInTime\justintime.db thay vì đường dẫn
+ * tương đối "justintime.db" — vì khi app tự khởi động
+ * cùng Windows (autostart), thư mục làm việc hiện tại
+ * (CWD) có thể khác với thư mục chứa file .exe, khiến
+ * app vô tình tạo 1 database RỖNG mới ở nơi khác, mất
+ * hết dữ liệu cũ.
  */
 int db_init(void)
 {
+    char dir[MAX_PATH];
+    char db_path[MAX_PATH];
+
+    if (settings_get_config_dir(dir, sizeof(dir)))
+    {
+        snprintf(
+            db_path,
+            sizeof(db_path),
+            "%s\\justintime.db",
+            dir
+        );
+    }
+    else
+    {
+        /* Fallback hiếm khi xảy ra: %APPDATA% không đọc được */
+        snprintf(db_path, sizeof(db_path), "justintime.db");
+    }
+
     int rc = sqlite3_open(
-        "justintime.db",
+        db_path,
         &g_db
     );
 
     if (rc != SQLITE_OK)
     {
         wprintf(
-            L"[DATABASE][ERROR][003] Failed to open database\n"
+            L"[%hs] Failed to open database\n",
+            ERR_DB_OPEN_FAIL
         );
 
         return 0;
@@ -87,6 +117,7 @@ int db_init(void)
         "start_time INTEGER NOT NULL,"
         "end_time INTEGER NOT NULL,"
 
+
         "synced INTEGER DEFAULT 0,"
 
         "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"
@@ -105,7 +136,8 @@ int db_init(void)
     if (rc != SQLITE_OK)
     {
         wprintf(
-            L"[DATABASE][ERROR][004] Create table failed: %hs\n",
+            L"[%hs] Create table failed: %hs\n",
+            ERR_DB_CREATE_TABLE,
             error
         );
 
@@ -115,7 +147,7 @@ int db_init(void)
     }
 
     wprintf(
-        L"[DATABASE][SUCCESS] Database initialized\n"
+        L"Database initialized\n"
     );
 
     return 1;
@@ -177,7 +209,8 @@ int db_insert_activity(
     if (rc != SQLITE_OK)
     {
         wprintf(
-            L"[DATABASE][ERROR][005] Prepare failed: %hs\n",
+            L"[%hs] Prepare failed: %hs\n",
+            ERR_DB_INSERT_FAIL,
             sqlite3_errmsg(g_db)
         );
 
@@ -243,7 +276,8 @@ int db_insert_activity(
     if (rc != SQLITE_DONE)
     {
         wprintf(
-            L"[DATABASE][ERROR][006] Insert failed: %hs\n",
+            L"[%hs] Insert failed: %hs\n",
+            ERR_DB_INSERT_FAIL,
             sqlite3_errmsg(g_db)
         );
 
@@ -251,12 +285,142 @@ int db_insert_activity(
     }
 
     wprintf(
-        L"[DATABASE][SUCCESS] Activity saved\n"
+        L"Activity saved\n"
     );
 
     return 1;
 }
 
+/*
+ * Build noi dung bao cao tong thoi gian su dung moi app
+ * hom nay vao buffer (dung chung cho console lan tray
+ * MessageBox). Tra ve 1 neu co du lieu, 0 neu chua co.
+ */
+int db_build_daily_summary_text(
+    wchar_t* out,
+    int out_size)
+{
+    out[0] = L'\0';
+
+    if (!g_db)
+        return 0;
+
+    time_t now = time(NULL);
+    struct tm today;
+
+    localtime_s(&today, &now);
+
+    today.tm_hour = 0;
+    today.tm_min  = 0;
+    today.tm_sec  = 0;
+
+    time_t day_start = mktime(&today);
+
+    const char* sql =
+        "SELECT process_name, SUM(duration_seconds) as total "
+        "FROM activity_logs "
+        "WHERE start_time >= ? "
+        "GROUP BY process_name "
+        "ORDER BY total DESC "
+        "LIMIT 15;";
+
+    sqlite3_stmt* stmt = NULL;
+
+    if (
+        sqlite3_prepare_v2(
+            g_db,
+            sql,
+            -1,
+            &stmt,
+            NULL
+        ) != SQLITE_OK
+    )
+        return 0;
+
+    sqlite3_bind_int64(
+        stmt,
+        1,
+        (sqlite3_int64)day_start
+    );
+
+    int has_row = 0;
+    int pos = 0;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        has_row = 1;
+
+        const char* process_utf8 =
+            (const char*)sqlite3_column_text(stmt, 0);
+
+        long long total_seconds =
+            sqlite3_column_int64(stmt, 1);
+
+        wchar_t process_wide[512] = {0};
+
+        utf8_to_wide(
+            process_utf8,
+            process_wide,
+            512
+        );
+
+        long hours   = (long)(total_seconds / 3600);
+        long minutes = (long)((total_seconds % 3600) / 60);
+        long seconds = (long)(total_seconds % 60);
+
+        int written = swprintf(
+            out + pos,
+            out_size - pos,
+            L"%-28ls %02ld:%02ld:%02ld\n",
+            process_wide,
+            hours,
+            minutes,
+            seconds
+        );
+
+        if (written < 0)
+            break;
+
+        pos += written;
+    }
+
+    sqlite3_finalize(stmt);
+
+    if (!has_row)
+    {
+        swprintf(
+            out,
+            out_size,
+            L"(Chua co du lieu hom nay)"
+        );
+    }
+
+    return has_row;
+}
+
+/*
+ * In bao cao tong thoi gian su dung moi app trong ngay
+ * hom nay ra console (gop tat ca record du bi chia nho theo
+ * tung lan doi window title). Khong thay doi cach luu chi
+ * tiet tung record, chi tong hop luc hien thi.
+ */
+void db_print_daily_summary(void)
+{
+    wchar_t buffer[4096] = {0};
+
+    db_build_daily_summary_text(
+        buffer,
+        4096
+    );
+
+    wprintf(
+        L"\n"
+        L"========== TONG KET HOM NAY (theo app) ==========\n"
+        L"%ls"
+        L"==================================================\n",
+        buffer
+    );
+}
 /*
  * Đóng database
  */
@@ -318,7 +482,7 @@ void db_print_unsynced(void)
             sqlite3_column_int(stmt, 2);
 
         wprintf(
-            L"[DATABASE][UNSYNCED] id=%d process=%ls duration=%d\n",
+            L"[UNSYNCED] id=%d process=%ls duration=%d\n",
             id,
             process,
             duration

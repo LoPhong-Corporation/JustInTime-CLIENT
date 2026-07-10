@@ -3,7 +3,8 @@ project(JustInTime C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(JustInTime src/main.c
+add_executable(JustInTime WIN32
+        src/main.c
         include/activity.h
         src/activity.c
         include/database.h
@@ -20,7 +21,16 @@ add_executable(JustInTime src/main.c
         include/jsonutil.h
         src/jsonutil.c
         include/backup.h
-        src/backup.c)
+        src/backup.c
+        include/settings.h
+        src/settings.c
+        include/auth.h
+        src/auth.c
+        include/tray.h
+        src/tray.c
+        include/ui_dialog.h
+        src/ui_dialog.c
+        include/error_codes.h)
 include_directories(third_party)
 include_directories(include)
 
@@ -28,4 +38,9 @@ target_link_libraries(
         JustInTime
         psapi
         winhttp
+        crypt32
+        shell32
+        user32
+        gdi32
+        advapi32
 )

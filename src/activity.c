@@ -3,6 +3,7 @@
 //
 #include "../include/activity.h"
 #include "../include/database.h"
+#include "../include/settings.h"
 
 #include <windows.h>
 #include <psapi.h>
@@ -141,9 +142,24 @@ static void finish_current_record(void)
         );
 
     /*
-     * Bỏ qua record quá ngắn
+     * Bỏ qua app nằm trong danh sách loại trừ (cấu hình
+     * trong menu Cài đặt của tray).
      */
-    if (g_current_record.duration_seconds < 1)
+    if (
+        settings_is_process_excluded(
+            g_current_record.process_name
+        )
+    )
+        return;
+
+    /*
+     * Bỏ qua record quá ngắn (ngưỡng lấy từ settings,
+     * mặc định 2 giây).
+     */
+    AppSettings s;
+    settings_get(&s);
+
+    if (g_current_record.duration_seconds < s.min_duration_sec)
         return;
 
     print_activity_report(

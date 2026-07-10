@@ -15,6 +15,23 @@ int db_insert_activity(
 
 void db_print_unsynced(void);
 
+/*
+ * In báo cáo tổng thời gian sử dụng mỗi app trong ngày
+ * hôm nay ra console (gộp các record dù bị chia nhỏ theo
+ * từng lần đổi window title).
+ */
+void db_print_daily_summary(void);
+
+/*
+ * Build nội dung báo cáo tổng hợp theo app hôm nay vào
+ * buffer, dùng để hiển thị trong MessageBox của tray.
+ * Trả về 1 nếu có dữ liệu, 0 nếu chưa có.
+ */
+int db_build_daily_summary_text(
+    wchar_t* out,
+    int out_size
+);
+
 void db_close(void);
 
 int db_get_unsynced_records(

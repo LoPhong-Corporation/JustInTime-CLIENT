@@ -9,6 +9,8 @@
 #include "../include/backup.h"
 #include "../include/database.h"
 #include "../include/config.h"
+#include "../include/settings.h"
+#include "../include/error_codes.h"
 
 #include <windows.h>
 
@@ -17,14 +19,27 @@
 #include <time.h>
 
 /*
- * Đảm bảo thư mục backup tồn tại.
+ * Lấy đường dẫn tuyệt đối tới thư mục backup
+ * (%APPDATA%\JustInTime\backups), tạo nếu chưa có.
+ * QUAN TRỌNG: không dùng đường dẫn tương đối, vì khi
+ * app tự khởi động cùng Windows (autostart), thư mục
+ * làm việc hiện tại có thể khác thư mục chứa file .exe.
  */
-static void ensure_backup_dir(void)
+static void get_backup_dir(char* out, int out_size)
 {
-    CreateDirectoryA(
-        BACKUP_DIR,
-        NULL
+    char config_dir[MAX_PATH];
+
+    settings_get_config_dir(config_dir, sizeof(config_dir));
+
+    snprintf(
+        out,
+        out_size,
+        "%s\\%s",
+        config_dir,
+        BACKUP_DIR
     );
+
+    CreateDirectoryA(out, NULL);
 }
 
 /*
@@ -34,7 +49,7 @@ static void ensure_backup_dir(void)
  * nên sắp xếp theo thứ tự chữ cái cũng chính là
  * sắp xếp theo thời gian.
  */
-static void cleanup_old_backups(void)
+static void cleanup_old_backups(const char* backup_dir)
 {
     char pattern[MAX_PATH];
 
@@ -42,7 +57,7 @@ static void cleanup_old_backups(void)
         pattern,
         sizeof(pattern),
         "%s\\backup_*.json",
-        BACKUP_DIR
+        backup_dir
     );
 
     char names[512][MAX_PATH];
@@ -108,7 +123,7 @@ static void cleanup_old_backups(void)
             full_path,
             sizeof(full_path),
             "%s\\%s",
-            BACKUP_DIR,
+            backup_dir,
             names[i]
         );
 
@@ -118,7 +133,9 @@ static void cleanup_old_backups(void)
 
 int backup_create_snapshot(void)
 {
-    ensure_backup_dir();
+    char backup_dir[MAX_PATH];
+
+    get_backup_dir(backup_dir, sizeof(backup_dir));
 
     time_t now = time(NULL);
     struct tm t;
@@ -131,7 +148,7 @@ int backup_create_snapshot(void)
         filepath,
         sizeof(filepath),
         "%s\\backup_%04d%02d%02d_%02d%02d%02d.json",
-        BACKUP_DIR,
+        backup_dir,
         t.tm_year + 1900,
         t.tm_mon + 1,
         t.tm_mday,
@@ -145,16 +162,17 @@ int backup_create_snapshot(void)
     if (ok)
     {
         wprintf(
-            L"[BACKUP][SUCCESS] Backup in %hs\n",
+            L"[BACKUP] Da sao luu du lieu vao %hs\n",
             filepath
         );
 
-        cleanup_old_backups();
+        cleanup_old_backups(backup_dir);
     }
     else
     {
         wprintf(
-            L"[BACKUP][ERROR][002] Backup failed.\n"
+            L"[BACKUP][%hs] Sao luu that bai\n",
+            ERR_DB_EXPORT_FAIL
         );
     }
 

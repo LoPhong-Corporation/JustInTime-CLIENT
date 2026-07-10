@@ -8,6 +8,9 @@
 #include "../include/network.h"
 #include "../include/config.h"
 #include "../include/jsonutil.h"
+#include "../include/settings.h"
+#include "../include/auth.h"
+#include "../include/error_codes.h"
 
 #include <windows.h>
 #include <winhttp.h>
@@ -116,6 +119,21 @@ int network_send_record(
     if (!rec)
         return 0;
 
+    /*
+     * Bắt buộc phải đăng nhập mới sync lên cloud được,
+     * vì Edge Function cần access_token thật của user để
+     * biết record này thuộc về ai (user_id).
+     * Dữ liệu vẫn được lưu đầy đủ ở local (SQLite + backup
+     * JSON) dù chưa đăng nhập, chỉ là chưa lên được cloud.
+     */
+    if (!auth_is_logged_in())
+    {
+        return 0;
+    }
+
+    AuthSession session;
+    auth_get_session(&session);
+
     char body[16384] = {0};
 
     int body_len =
@@ -127,14 +145,22 @@ int network_send_record(
 
     if (body_len <= 0 || body_len >= (int)sizeof(body))
     {
-        wprintf(L"[SYNC][ERROR][007] Cannot create JSON body (too long or corrupt data)\n");
+        wprintf(L"[SYNC][%hs] Khong the tao JSON body (qua dai hoac loi)\n", ERR_SYNC_PAYLOAD_TOO_BIG);
         return 0;
     }
+
+    char base_url[MAX_URL_LEN] = {0};
+    char apikey_str[MAX_KEY_LEN] = {0};
+
+    settings_get_supabase_config(
+        base_url, sizeof(base_url),
+        apikey_str, sizeof(apikey_str)
+    );
 
     wchar_t host[256] = {0};
 
     extract_host(
-        SUPABASE_URL,
+        base_url,
         host,
         256
     );
@@ -143,8 +169,16 @@ int network_send_record(
 
     MultiByteToWideChar(
         CP_UTF8, 0,
-        SUPABASE_ANON_KEY, -1,
+        apikey_str, -1,
         apikey, 2048
+    );
+
+    wchar_t access_token[MAX_TOKEN_LEN] = {0};
+
+    MultiByteToWideChar(
+        CP_UTF8, 0,
+        session.access_token, -1,
+        access_token, MAX_TOKEN_LEN
     );
 
     int success = 0;
@@ -159,7 +193,7 @@ int network_send_record(
 
     if (!hSession)
     {
-        wprintf(L"[SYNC][ERROR][008] WinHttpOpen failed (%lu)\n", GetLastError());
+        wprintf(L"[SYNC] WinHttpOpen that bai (%lu)\n", GetLastError());
         return 0;
     }
 
@@ -195,7 +229,7 @@ int network_send_record(
                 L"apikey: %ls\r\n"
                 L"Authorization: Bearer %ls\r\n",
                 apikey,
-                apikey
+                access_token
             );
 
             BOOL sent = WinHttpSendRequest(
@@ -271,7 +305,8 @@ int network_send_record(
                     resp_body[total_read] = '\0';
 
                     wprintf(
-                        L"[SYNC][ERROR][009] Supabase returns HTTP error %lu: %hs\n",
+                        L"[SYNC][%hs] Supabase tra ve loi HTTP %lu: %hs\n",
+                        ERR_SYNC_SERVER_ERROR,
                         status,
                         resp_body
                     );
@@ -280,7 +315,8 @@ int network_send_record(
             else
             {
                 wprintf(
-                    L"[SYNC][ERROR][010] Failed to send request (%lu)\n",
+                    L"[SYNC][%hs] Gui request that bai (%lu)\n",
+                    ERR_SYNC_CONNECT_FAIL,
                     GetLastError()
                 );
             }
@@ -289,14 +325,22 @@ int network_send_record(
         }
         else
         {
-            wprintf(L"[SYNC][ERROR][011] WinHttpOpenRequest failed (%lu)\n", GetLastError());
+            wprintf(
+                L"[SYNC][%hs] WinHttpOpenRequest that bai (%lu)\n",
+                ERR_SYNC_CONNECT_FAIL,
+                GetLastError()
+            );
         }
 
         WinHttpCloseHandle(hConnect);
     }
     else
     {
-        wprintf(L"[SYNC][ERROR][012] WinHttpConnect failed (%lu)\n", GetLastError());
+        wprintf(
+            L"[SYNC][%hs] WinHttpConnect that bai (%lu)\n",
+            ERR_SYNC_CONNECT_FAIL,
+            GetLastError()
+        );
     }
 
     WinHttpCloseHandle(hSession);

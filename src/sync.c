@@ -5,11 +5,23 @@
 #include "../include/sync.h"
 #include "../include/database.h"
 #include "../include/network.h"
+#include "../include/auth.h"
+#include "../include/error_codes.h"
 
 #include <stdio.h>
 
 void sync_pending_records(void)
 {
+    if (!auth_is_logged_in())
+    {
+        wprintf(
+            L"[SYNC][%hs] Chua dang nhap, du lieu van luu local, "
+            L"dang nhap qua tray de dong bo len cloud\n",
+            ERR_SYNC_NOT_LOGGED_IN
+        );
+        return;
+    }
+
     SyncRecord records[MAX_RECORDS];
 
     int count =
@@ -21,13 +33,13 @@ void sync_pending_records(void)
     if (count == 0)
     {
         wprintf(
-            L"[SYNC][NONE] No pending records\n"
+            L"[SYNC] No pending records\n"
         );
         return;
     }
 
     wprintf(
-        L"[SYNC][SUCCESS] Found %d record(s)\n",
+        L"[SYNC] Found %d record(s)\n",
         count
     );
 
@@ -42,14 +54,14 @@ void sync_pending_records(void)
             )
             {
                 wprintf(
-                    L"[SYNC][SUCCESS] Record %d synced\n",
+                    L"[SYNC] Record %d synced\n",
                     records[i].id
                 );
             }
             else
             {
                 wprintf(
-                    L"[SYNC][ERROR][013] Failed to update database for record %d\n",
+                    L"[SYNC] Failed to update database for record %d\n",
                     records[i].id
                 );
             }
@@ -57,7 +69,7 @@ void sync_pending_records(void)
         else
         {
             wprintf(
-                L"[SYNC][ERROR][014] Send failed: %d\n",
+                L"[SYNC] Send failed: %d\n",
                 records[i].id
             );
         }

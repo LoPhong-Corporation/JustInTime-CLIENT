@@ -1,10 +1,13 @@
 // supabase/functions/sync-activity/index.ts
 //
 // Edge Function nhận dữ liệu activity từ agent JustInTime,
-// validate, rồi ghi vào bảng activity_logs bằng service_role
-// key (chỉ tồn tại trên server Supabase, KHÔNG bao giờ lộ ra
-// client). Nhờ vậy client (.exe) chỉ cần cầm publishable key
-// (vốn dĩ công khai), không cần và không nên cầm service_role.
+// validate, xác thực NGƯỜI DÙNG THẬT qua access_token trong
+// header Authorization (không phải publishable key), rồi ghi
+// vào bảng activity_logs bằng service_role key (chỉ tồn tại
+// trên server Supabase, KHÔNG bao giờ lộ ra client).
+//
+// Nhờ vậy: mỗi record được gắn đúng user_id của người đăng
+// nhập, và client (.exe) không bao giờ cầm service_role.
 //
 // Deploy: supabase functions deploy sync-activity
 
@@ -13,7 +16,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+/*
+ * Client dùng service_role để GHI dữ liệu (bỏ qua RLS).
+ */
+const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
@@ -36,6 +42,35 @@ Deno.serve(async (req: Request) => {
       { status: 405, headers: { "Content-Type": "application/json" } }
     );
   }
+
+  /*
+   * Bắt buộc phải có access_token thật của user đăng nhập
+   * (không phải publishable key) trong header Authorization.
+   * Dùng chính access_token này để xác thực -> lấy user_id,
+   * đảm bảo mỗi client chỉ ghi được dữ liệu gắn với TÀI KHOẢN
+   * CỦA CHÍNH HỌ, không thể giả mạo user_id trong body.
+   */
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const accessToken = authHeader.replace(/^Bearer\s+/i, "");
+
+  if (!accessToken) {
+    return new Response(
+      JSON.stringify({ error: "Missing access token" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const { data: userData, error: userError } =
+    await adminClient.auth.getUser(accessToken);
+
+  if (userError || !userData?.user) {
+    return new Response(
+      JSON.stringify({ error: "Invalid or expired session, please login again" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const user_id = userData.user.id;
 
   let payload: unknown;
 
@@ -74,10 +109,11 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from("activity_logs")
     .upsert(
       {
+        user_id,
         device_id,
         process_name,
         window_title,
@@ -85,7 +121,7 @@ Deno.serve(async (req: Request) => {
         start_time,
         end_time,
       },
-      { onConflict: "device_id,start_time" }
+      { onConflict: "user_id,device_id,start_time" }
     );
 
   if (error) {

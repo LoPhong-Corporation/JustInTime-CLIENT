@@ -1,8 +1,8 @@
 //
 // Created by LoPhongCorporation on 6/24/2026.
-// Updated: them backup dinh ky, don dep an toan, va
-// xu ly tat chuong trinh (Ctrl+C / dong cua so) khong
-// mat du lieu.
+// Rewritten: chuyen tu console app sang GUI app chay ngam
+// trong system tray. Console debug van con nhung an mac
+// dinh, bat/tat qua menu tray "Hien cua so debug".
 //
 
 #include "../include/activity.h"
@@ -10,6 +10,11 @@
 #include "../include/sync.h"
 #include "../include/backup.h"
 #include "../include/config.h"
+#include "../include/settings.h"
+#include "../include/auth.h"
+#include "../include/tray.h"
+#include "../include/ui_dialog.h"
+#include "../include/error_codes.h"
 
 #include <windows.h>
 
@@ -20,28 +25,23 @@
 #include <io.h>
 #include <fcntl.h>
 
-#define MONITOR_INTERVAL_MS   1000
-#define SYNC_INTERVAL_SEC      30
-#define BACKUP_INTERVAL_SEC  3600
+#define MONITOR_INTERVAL_MS 1000
+
+static volatile int g_worker_running = 1;
+static HWND         g_main_hwnd = NULL;
 
 /*
- * Cờ điều khiển vòng lặp chính. volatile vì có thể
- * bị thay đổi từ luồng xử lý tín hiệu console.
+ * Xu ly Ctrl+C / dong cua so console debug / logoff /
+ * shutdown: yeu cau cua so chinh (an, chay message-only)
+ * dong lai mot cach an toan qua đúng 1 luong xu ly (main
+ * thread), thay vi tu lam moi thu ngay trong handler thread
+ * (tranh tranh chap voi worker thread dang dung DB).
  */
-static volatile BOOL g_running = TRUE;
-
 /*
- * Xử lý các sự kiện điều khiển console (Ctrl+C, đóng
- * cửa sổ, logoff, shutdown) để đảm bảo không mất dữ
- * liệu khi người dùng tắt agent.
- *
- * - Với CTRL_C/CTRL_BREAK: chỉ đặt cờ dừng, để vòng
- *   lặp chính tự thoát và dọn dẹp (an toàn hơn vì
- *   không truy cập DB đồng thời từ 2 luồng).
- * - Với CLOSE/LOGOFF/SHUTDOWN: Windows chỉ cho một
- *   khoảng thời gian ngắn trước khi buộc kết thúc tiến
- *   trình, nên phải đồng bộ + backup + đóng DB ngay
- *   trong handler này.
+ * Du da vo hieu hoa nut dong (X) cua console debug (xem
+ * WinMain), handler nay van giu lai de xu ly dung cach
+ * cho truong hop logoff/shutdown Windows (nguoi dung tat
+ * may), dam bao van sync/backup du lieu truoc khi thoat.
  */
 static BOOL WINAPI console_handler(DWORD signal)
 {
@@ -49,19 +49,18 @@ static BOOL WINAPI console_handler(DWORD signal)
     {
         case CTRL_C_EVENT:
         case CTRL_BREAK_EVENT:
-            g_running = FALSE;
-            return TRUE;
-
         case CTRL_CLOSE_EVENT:
         case CTRL_LOGOFF_EVENT:
         case CTRL_SHUTDOWN_EVENT:
-            wprintf(L"\n[SYSTEM] Dang dung agent, dong bo lan cuoi...\n");
+            if (g_main_hwnd)
+                PostMessage(g_main_hwnd, WM_CLOSE, 0, 0);
 
-            g_running = FALSE;
-
-            sync_pending_records();
-            backup_create_snapshot();
-            db_close();
+            /*
+             * Windows chi cho vai giay truoc khi force-kill
+             * voi CLOSE/LOGOFF/SHUTDOWN, cho message loop
+             * kip xu ly xong.
+             */
+            Sleep(3000);
 
             return TRUE;
 
@@ -70,116 +69,173 @@ static BOOL WINAPI console_handler(DWORD signal)
     }
 }
 
-int main(void)
+/*
+ * Worker thread: chay vong lap theo doi/sync/backup/bao cao,
+ * doc settings moi vong lap de ap dung thay doi tu dialog
+ * Cai dat ngay lap tuc ma khong can khoi dong lai app.
+ */
+static DWORD WINAPI worker_thread(LPVOID param)
 {
-    /*
-     * Hỗ trợ Unicode trên Windows Console
-     */
-    _setmode(
-        _fileno(stdout),
-        _O_U16TEXT
-    );
+    (void)param;
 
-    setlocale(
-        LC_ALL,
-        ""
-    );
+    time_t last_sync    = time(NULL);
+    time_t last_backup  = time(NULL);
+    time_t last_summary = time(NULL);
 
-    wprintf(
-        L"[CORE][SUCCESS] JustInTime Agent Started\n"
-    );
-
-    /*
-     * Khởi tạo database
-     */
-    if (!db_init())
-    {
-        wprintf(
-            L"[CORE][ERROR][001] Database initialization failed.\n"
-        );
-
-        return 1;
-    }
-
-    /*
-     * Đăng ký xử lý tắt an toàn
-     */
-    SetConsoleCtrlHandler(
-        console_handler,
-        TRUE
-    );
-
-    /*
-     * Backup ngay khi khởi động để luôn có bản sao
-     * lưu mới nhất, kể cả khi agent chưa chạy được lâu.
-     */
     backup_create_snapshot();
 
-    time_t last_sync =
-        time(NULL);
-
-    time_t last_backup =
-        time(NULL);
-
-    /*
-     * Main Loop
-     */
-    while (g_running)
+    while (g_worker_running)
     {
-        /*
-         * Theo dõi cửa sổ đang hoạt động
-         */
-        monitor_activity();
+        AppSettings s;
+        settings_get(&s);
 
-        time_t now =
-            time(NULL);
+        if (!tray_is_paused())
+        {
+            monitor_activity();
+        }
 
-        /*
-         * Đồng bộ theo chu kỳ lên Supabase
-         */
-        if (
-            now - last_sync
-            >= SYNC_INTERVAL_SEC
-        )
+        time_t now = time(NULL);
+
+        if (now - last_sync >= s.sync_interval_sec)
         {
             sync_pending_records();
-
             last_sync = now;
         }
 
-        /*
-         * Backup cục bộ theo chu kỳ + dọn dẹp
-         * bản ghi ĐÃ đồng bộ quá hạn giữ lại.
-         */
-        if (
-            now - last_backup
-            >= BACKUP_INTERVAL_SEC
-        )
+        if (now - last_backup >= s.backup_interval_sec)
         {
             backup_create_snapshot();
-
-            db_delete_old_records(
-                RETENTION_DAYS
-            );
-
+            db_delete_old_records(RETENTION_DAYS);
             last_backup = now;
         }
 
-        /*
-         * Giảm tải CPU
-         */
-        Sleep(
-            MONITOR_INTERVAL_MS
-        );
+        if (now - last_summary >= s.summary_interval_sec)
+        {
+            db_print_daily_summary();
+            last_summary = now;
+        }
+
+        Sleep(MONITOR_INTERVAL_MS);
     }
 
+    return 0;
+}
+
+int WINAPI WinMain(
+    HINSTANCE hInstance,
+    HINSTANCE hPrevInstance,
+    LPSTR lpCmdLine,
+    int nCmdShow)
+{
+    (void)hPrevInstance;
+    (void)lpCmdLine;
+    (void)nCmdShow;
+
     /*
-     * Thoát vòng lặp do CTRL_C/CTRL_BREAK: đồng bộ,
-     * backup lần cuối rồi mới đóng database.
+     * Console debug: tao san nhung an mac dinh, de moi
+     * ham wprintf() cu van hoat dong binh thuong, chi la
+     * nguoi dung khong thay cua so console tru khi bat
+     * "Hien cua so debug" trong menu tray.
      */
+    AllocConsole();
+
+    FILE* dummy;
+    freopen_s(&dummy, "CONOUT$", "w", stdout);
+    freopen_s(&dummy, "CONOUT$", "w", stderr);
+
+    _setmode(_fileno(stdout), _O_U16TEXT);
+    setlocale(LC_ALL, "");
+
+    HWND console_wnd = GetConsoleWindow();
+
+    if (console_wnd)
+    {
+        /*
+         * Vo hieu hoa nut dong (X) cua cua so console debug.
+         * Ly do: mot khi console bi dong (CTRL_CLOSE_EVENT),
+         * Windows se luon buoc ket thuc tien trinh sau vai
+         * giay du handler co xu ly gi di nua - khong the
+         * "huy" viec dong console nhu voi 1 cua so thuong.
+         * Vi vay cach dung la khong cho phep dong no, chi an/
+         * hien qua menu tray.
+         */
+        HMENU sys_menu = GetSystemMenu(console_wnd, FALSE);
+
+        if (sys_menu)
+        {
+            DeleteMenu(sys_menu, SC_CLOSE, MF_BYCOMMAND);
+        }
+
+        ShowWindow(console_wnd, SW_HIDE);
+    }
+
+    wprintf(L"JustInTime Agent Started (Running in system tray)\n");
+
+    if (!db_init())
+    {
+        wchar_t msg[128];
+        swprintf(msg, 128, L"[%hs] Không thể khởi tạo database.", ERR_DB_OPEN_FAIL);
+        show_error_message(msg);
+        return 1;
+    }
+
+    AppSettings settings;
+    settings_load(&settings);
+
+    auth_load_session();
+
+    SetConsoleCtrlHandler(console_handler, TRUE);
+
+    g_main_hwnd = tray_init(hInstance);
+
+    if (!g_main_hwnd)
+    {
+        wchar_t msg[128];
+        swprintf(msg, 128, L"[%hs] Không thể tạo tray icon.", ERR_UI_TRAY_INIT_FAIL);
+        show_error_message(msg);
+        db_close();
+        return 1;
+    }
+
+    if (!auth_is_logged_in())
+    {
+        /*show_info_message(
+            L"Chào mừng bạn đến với JustInTime!\n\n"
+            L"Dữ liệu vẫn được theo dõi và lưu local bình thường.\n"
+            L"Đăng nhập qua menu chuột phải vào icon khay hệ thống\n"
+            L"để đồng bộ dữ liệu lên cloud."
+        );*/
+
+        //SLIENT MODE
+    }
+
+    HANDLE worker = CreateThread(
+        NULL, 0,
+        worker_thread,
+        NULL, 0,
+        NULL
+    );
+
+    MSG msg;
+
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    g_worker_running = 0;
+
+    if (worker)
+    {
+        WaitForSingleObject(worker, 5000);
+        CloseHandle(worker);
+    }
+
     sync_pending_records();
     backup_create_snapshot();
+    db_print_daily_summary();
     db_close();
 
-    return 0;
+    return (int)msg.wParam;
 }
