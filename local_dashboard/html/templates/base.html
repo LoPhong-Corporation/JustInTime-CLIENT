@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        {% block title %}
+            JustInTime Dashboard
+        {% endblock %}
+    </title>
+
+    <!-- Bootstrap -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- CSS của dự án -->
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+    <div class="wrapper">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+
+            <div class="logo">
+
+                <h3>JustInTime</h3>
+
+                <span>System Dashboard</span>
+
+            </div>
+
+            <nav>
+
+                <a href="/">
+                    <i class="fa-solid fa-house"></i>
+                    Dashboard
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-hard-drive"></i>
+                    Disk
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-memory"></i>
+                    Memory
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-microchip"></i>
+                    CPU
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-network-wired"></i>
+                    Network
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-list-check"></i>
+                    Process
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-gears"></i>
+                    Services
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-rocket"></i>
+                    Startup
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-calendar"></i>
+                    Scheduler
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-book"></i>
+                    Logs
+                </a>
+
+            </nav>
+
+            <div class="sidebar-footer">
+
+                <a href="#">
+                    <i class="fa-solid fa-gear"></i>
+                    Settings
+                </a>
+
+                <a href="#">
+                    <i class="fa-solid fa-circle-info"></i>
+                    About
+                </a>
+
+            </div>
+
+        </aside>
+
+        <!-- Main -->
+
+    <main class="content">
+
+        <!-- ========================= -->
+        <!-- Top Navigation -->
+        <!-- ========================= -->
+
+        <header class="topbar">
+
+            <div class="topbar-left">
+
+                <h4>Dashboard</h4>
+
+            </div>
+
+            <div class="topbar-center">
+
+                <input
+                    type="text"
+                    placeholder="Search..." />
+
+            </div>
+
+            <div class="topbar-right">
+
+                <span class="status">
+
+                    <i class="fa-solid fa-circle"></i>
+
+                    Running
+
+                </span>
+
+            </div>
+
+        </header>
+
+        <!-- ========================= -->
+
+        <section class="page-content">
+
+            {% block content %}
+            {% endblock %}
+
+        </section>
+
+    </main>
+
+    </div>
+
+</body>
+
+</html>

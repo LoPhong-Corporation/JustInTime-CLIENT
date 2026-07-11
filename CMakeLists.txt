@@ -44,13 +44,13 @@ add_executable(JustInTime WIN32
 
         # ---- UI Qt (C++) ----
         src/main.cpp
-        src/trayicon.h
+        "include/trayicon.h"
         src/trayicon.cpp
-        src/logindialog.h
+        "include/logindialog.h"
         src/logindialog.cpp
-        src/settingsdialog.h
+        "include/settingsdialog.h"
         src/settingsdialog.cpp
-        src/supabasesetupdialog.h
+        "include/supabasesetupdialog.h"
         src/supabasesetupdialog.cpp
 )
 
