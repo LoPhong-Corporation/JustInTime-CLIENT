@@ -9,6 +9,11 @@
 #ifndef AUTH_H
 #define AUTH_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #define MAX_TOKEN_LEN 4096
 #define MAX_EMAIL_LEN  256
 
@@ -67,5 +72,10 @@ void auth_get_session(AuthSession* out);
  * Có đang đăng nhập không.
  */
 int auth_is_logged_in(void);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

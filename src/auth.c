@@ -451,7 +451,7 @@ static int do_auth_flow(
         snprintf(
             err_out,
             err_out_size,
-            "[%s] Khong ket noi duoc toi Supabase",
+            "[%s] Could not connect to Supabase",
             ERR_AUTH_NETWORK
         );
 
@@ -468,7 +468,7 @@ static int do_auth_flow(
             !json_extract_string(response, "message", msg, sizeof(msg))
         )
         {
-            snprintf(msg, sizeof(msg), "Loi khong xac dinh (HTTP %lu)", status);
+            snprintf(msg, sizeof(msg), "Unknown error (HTTP %lu)", status);
         }
 
         snprintf(
@@ -513,7 +513,7 @@ static int do_auth_flow(
     snprintf(
         err_out,
         err_out_size,
-        "Thanh cong, nhung can xac nhan email truoc khi dang nhap."
+        "Success, but you need to confirm your email before logging in."
     );
 
     return 1;

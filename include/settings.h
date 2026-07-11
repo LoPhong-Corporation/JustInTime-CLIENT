@@ -7,6 +7,11 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include <wchar.h>
 
 #define MAX_EXCLUDED_LEN   1024
@@ -92,5 +97,10 @@ void settings_get_supabase_config(
  * thay đổi trong settings_update().
  */
 int settings_apply_autostart(int enabled);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

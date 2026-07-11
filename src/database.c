@@ -391,7 +391,7 @@ int db_build_daily_summary_text(
         swprintf(
             out,
             out_size,
-            L"(Chua co du lieu hom nay)"
+            L"(No data yet today)"
         );
     }
 

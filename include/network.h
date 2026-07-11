@@ -5,6 +5,11 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include "sync.h"
 
 /*
@@ -16,5 +21,10 @@
 int network_send_record(
     const SyncRecord* record
 );
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

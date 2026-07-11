@@ -4,6 +4,11 @@
 
 #ifndef DATABASE_H
 #define DATABASE_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sync.h"
 #include "activity.h"
 
@@ -56,5 +61,10 @@ int db_mark_record_synced(
 int db_export_json(
     const char* filepath
 );
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

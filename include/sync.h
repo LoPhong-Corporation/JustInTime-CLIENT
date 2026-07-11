@@ -5,6 +5,11 @@
 #ifndef SYNC_H
 #define SYNC_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include <wchar.h>
 
 #define MAX_RECORDS 100
@@ -27,5 +32,10 @@ typedef struct
 } SyncRecord;
 
 void sync_pending_records(void);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

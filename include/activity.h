@@ -5,6 +5,11 @@
 #ifndef ACTIVITY_H
 #define ACTIVITY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include <windows.h>
 #include <time.h>
 
@@ -28,5 +33,10 @@ typedef struct
 } ActivityRecord;
 
 void monitor_activity(void);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -8,6 +8,11 @@
 #ifndef JSONUTIL_H
 #define JSONUTIL_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include <stddef.h>
 
 /*
@@ -20,5 +25,10 @@ void json_escape(
     char* output,
     size_t output_size
 );
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
