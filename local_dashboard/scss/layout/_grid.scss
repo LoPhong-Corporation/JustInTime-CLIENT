@@ -1,0 +1,52 @@
+.jit-grid {
+
+    display: grid;
+
+    gap: 20px;
+
+    grid-template-columns: repeat(12, 1fr);
+
+}
+
+.jit-col-3 {
+
+    grid-column: span 3;
+
+}
+
+.jit-col-4 {
+
+    grid-column: span 4;
+
+}
+
+.jit-col-6 {
+
+    grid-column: span 6;
+
+}
+
+.jit-col-8 {
+
+    grid-column: span 8;
+
+}
+
+.jit-col-12 {
+
+    grid-column: span 12;
+
+}
+
+@media(max-width:1200px){
+
+    .jit-col-3,
+    .jit-col-4,
+    .jit-col-6{
+
+        grid-column:span 12;
+
+    }
+
+}
+

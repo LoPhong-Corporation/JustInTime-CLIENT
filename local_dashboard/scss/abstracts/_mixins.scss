@@ -1,0 +1,25 @@
+@mixin flex-center{
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+}
+
+@mixin flex-between{
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+}
+
+@mixin card{
+
+    background:var(--jit-bg-card);
+
+    border:1px solid var(--jit-border);
+
+    border-radius:14px;
+
+}

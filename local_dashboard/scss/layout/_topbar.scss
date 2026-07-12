@@ -1,0 +1,50 @@
+@use "../abstracts/variables" as *;
+
+.jit-topbar {
+
+    height: $topbar-height;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 0 28px;
+
+    background: var(--jit-bg-secondary);
+
+    border-bottom: 1px solid var(--jit-border);
+
+}
+
+.jit-topbar__right {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 18px;
+
+}
+
+.jit-clock {
+
+    color: var(--jit-text-secondary);
+
+    font-size: 13px;
+
+}
+
+.jit-status {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    color: var(--jit-success);
+
+}
+

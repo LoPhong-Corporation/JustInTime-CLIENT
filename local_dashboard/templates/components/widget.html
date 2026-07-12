@@ -1,0 +1,42 @@
+<section class="jit-widget">
+
+    <header class="jit-widget__header">
+
+        <div>
+
+            <h3>
+
+                {{ title }}
+
+            </h3>
+
+            <small>
+
+                {{ subtitle }}
+
+            </small>
+
+        </div>
+
+        <button>
+
+            <i class="ti ti-dots"></i>
+
+        </button>
+
+    </header>
+
+    <div class="jit-widget__body">
+
+        {% block widget %}
+        {% endblock %}
+
+    </div>
+
+    <footer class="jit-widget__footer">
+
+        Updated just now
+
+    </footer>
+
+</section>

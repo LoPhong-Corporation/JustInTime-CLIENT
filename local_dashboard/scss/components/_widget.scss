@@ -1,0 +1,219 @@
+@use "../abstracts/variables" as *;
+@use "../abstracts/mixins" as *;
+
+.jit-widget{
+
+    @include card;
+
+    display:flex;
+
+    flex-direction:column;
+
+    overflow:hidden;
+
+    transition:$transition;
+
+    position:relative;
+
+}
+
+.jit-widget:hover{
+
+    border-color:#5A5A5A;
+
+    transform:translateY(-2px);
+
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+
+}
+
+.jit-widget__header{
+
+    height:56px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    padding:0 18px;
+
+    border-bottom:1px solid $color-border;
+
+}
+
+.jit-widget__left{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:12px;
+
+}
+
+.jit-widget__icon{
+
+    width:34px;
+
+    height:34px;
+
+    border-radius:8px;
+
+    background:#313131;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:15px;
+
+}
+
+.jit-widget__title{
+
+    font-size:15px;
+
+    font-weight:600;
+
+}
+
+.jit-widget__subtitle{
+
+    font-size:12px;
+
+    color:$color-text-secondary;
+
+}
+
+.jit-widget__toolbar{
+
+    display:flex;
+
+    gap:10px;
+
+}
+
+.jit-tool{
+
+    width:30px;
+
+    height:30px;
+
+    border-radius:8px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    color:$color-text-secondary;
+
+    transition:$transition;
+
+}
+
+.jit-tool:hover{
+
+    background:#333;
+
+    color:white;
+
+}
+
+.jit-widget__body{
+
+    flex:1;
+
+    padding:18px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:18px;
+
+}
+
+.jit-stat{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+}
+
+.jit-stat__label{
+
+    color:$color-text-secondary;
+
+}
+
+.jit-stat__value{
+
+    font-weight:600;
+
+}
+
+.jit-chart{
+
+    flex:1;
+
+    min-height:160px;
+
+    position:relative;
+
+}
+
+.jit-widget__footer{
+
+    height:42px;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    padding:0 18px;
+
+    border-top:1px solid $color-border;
+
+    color:$color-text-secondary;
+
+    font-size:12px;
+
+}
+
+
+
+
+.jit-widget--loading{
+
+    opacity:.75;
+
+}
+
+.jit-widget--error{
+
+    border-color:#D64545;
+
+}
+
+.jit-widget--offline{
+
+    filter:grayscale(.7);
+
+}
+
+.jit-widget--empty{
+
+    opacity:.55;
+
+}
