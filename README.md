@@ -249,8 +249,8 @@ cmake --build .
 | Sync Engine | ✅ |
 | Supabase Edge Functions | ✅ |
 | Offline Queue | ✅ |
-| Retry Queue | 🚧 |
-| Configuration | 🚧 |
+| Retry Queue | ✅ |
+| Configuration | ✅ |
 | Windows Service | ⏳ |
 | Dashboard | ⏳ |
 | Installer | ⏳ |
@@ -354,3 +354,6 @@ Please open an Issue before submitting a Pull Request for large changes.
 This project is licensed under the MIT License.
 
 See the [LICENSE](LICENSE) file for more information.
+
+
+**Made with ❤️ by LoPhong Corporation**
