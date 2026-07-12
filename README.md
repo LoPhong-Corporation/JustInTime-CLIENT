@@ -38,10 +38,8 @@ The project follows an **offline-first** architecture, ensuring that activity da
 
 ## Work In Progress
 
-- Retry mechanism
-- Configuration system
-- Logging improvements
-- Better error handling
+- Building UI system
+- Building API connection between Dashboard and JustInTime Agent
 
 ---
 
