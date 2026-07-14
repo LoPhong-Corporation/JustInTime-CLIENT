@@ -207,6 +207,8 @@ Current local database table
 - Supabase Edge Functions
 - PostgreSQL
 - CMake
+- Python 3.13
+- Flask
 
 ---
 
