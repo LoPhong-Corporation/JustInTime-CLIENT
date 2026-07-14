@@ -231,9 +231,9 @@ cmake ..
 
 cmake --build .
 ```
-And Python with Flask package
+And Python with Flask package, Psutil package (Recommend Python 3.13)
 ```bash
-pip install flask
+pip install flask psutil
 ```
 ---
 
