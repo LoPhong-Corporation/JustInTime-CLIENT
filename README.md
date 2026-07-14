@@ -231,7 +231,7 @@ cmake ..
 
 cmake --build .
 ```
-**YOU NEED TO INSTALL PYTHON WITH FLASK**
+And Python with Flask package
 ```bash
 pip install flask
 ```
