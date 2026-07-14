@@ -5,6 +5,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Windows-blue)
 ![Language](https://img.shields.io/badge/Language-C-success)
 ![Language](https://img.shields.io/badge/Language-C++-success)
+![Language](https://img.shields.io/badge/Language-Python-success)
 ![Compiler](https://img.shields.io/badge/Compiler-MSVC-purple)
 ![Database](https://img.shields.io/badge/Database-SQLite-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
