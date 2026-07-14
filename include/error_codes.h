@@ -32,4 +32,8 @@
 /* Giao diện */
 #define ERR_UI_TRAY_INIT_FAIL   "E5001"
 
+/* Remote View */
+#define ERR_REMOTEVIEW_SOCKET_FAIL "E6001"
+#define ERR_REMOTEVIEW_BIND_FAIL   "E6002"
+
 #endif

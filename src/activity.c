@@ -15,6 +15,45 @@
 static ActiveWindow g_last_window = {0};
 static ActivityRecord g_current_record = {0};
 
+static CRITICAL_SECTION g_current_lock;
+static int g_current_lock_ready = 0;
+
+static void ensure_current_lock(void)
+{
+    if (!g_current_lock_ready)
+    {
+        InitializeCriticalSection(&g_current_lock);
+        g_current_lock_ready = 1;
+    }
+}
+
+/*
+ * Lấy snapshot activity đang diễn ra NGAY LÚC NÀY (dùng
+ * cho remote view - xem real-time không qua cloud).
+ * Thread-safe: có thể gọi từ thread khác (HTTP server thread)
+ * trong khi worker thread vẫn đang cập nhật g_current_record.
+ */
+void activity_get_current(
+    wchar_t* process_out, int process_size,
+    wchar_t* title_out, int title_size,
+    time_t* since_out)
+{
+    ensure_current_lock();
+
+    EnterCriticalSection(&g_current_lock);
+
+    if (process_out && process_size > 0)
+        wcscpy_s(process_out, process_size, g_current_record.process_name);
+
+    if (title_out && title_size > 0)
+        wcscpy_s(title_out, title_size, g_current_record.window_title);
+
+    if (since_out)
+        *since_out = g_current_record.start_time;
+
+    LeaveCriticalSection(&g_current_lock);
+}
+
 /*
  * Lấy thông tin cửa sổ hiện tại
  */
@@ -105,6 +144,9 @@ static void print_activity_report(
 static void start_new_record(
     const ActiveWindow* window)
 {
+    ensure_current_lock();
+    EnterCriticalSection(&g_current_lock);
+
     wcscpy_s(
         g_current_record.process_name,
         MAX_PATH,
@@ -125,6 +167,8 @@ static void start_new_record(
     g_current_record.duration_seconds = 0;
 
     g_current_record.synced = 0;
+
+    LeaveCriticalSection(&g_current_lock);
 }
 
 /*
@@ -132,6 +176,9 @@ static void start_new_record(
  */
 static void finish_current_record(void)
 {
+    ensure_current_lock();
+    EnterCriticalSection(&g_current_lock);
+
     g_current_record.end_time =
         time(NULL);
 
@@ -140,6 +187,8 @@ static void finish_current_record(void)
             g_current_record.end_time -
             g_current_record.start_time
         );
+
+    LeaveCriticalSection(&g_current_lock);
 
     /*
      * Bỏ qua app nằm trong danh sách loại trừ (cấu hình

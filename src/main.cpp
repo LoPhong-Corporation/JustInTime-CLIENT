@@ -29,6 +29,7 @@ extern "C" {
 #include "../include/settings.h"
 #include "../include/auth.h"
 #include "../include/error_codes.h"
+#include "../include/remoteview.h"
 }
 
 #include "trayicon.h"
@@ -144,19 +145,21 @@ int main(int argc, char *argv[])
 
     auth_load_session();
 
+    remoteview_start();
+
     TrayIcon tray;
     tray.show();
 
     if (!auth_is_logged_in())
     {
-        /*QMessageBox::information(
+        QMessageBox::information(
             nullptr,
             "JustInTime",
             "Welcome to JustInTime!\n\n"
             "Your activity is still being tracked and saved locally.\n"
             "Log in via the system tray icon's right-click menu\n"
             "to sync your data to the cloud."
-        );*/
+        );
     }
 
     std::thread worker(workerLoop, &tray);
@@ -171,6 +174,8 @@ int main(int argc, char *argv[])
 
     if (worker.joinable())
         worker.join();
+
+    remoteview_stop();
 
     sync_pending_records();
     backup_create_snapshot();

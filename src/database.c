@@ -150,6 +150,23 @@ int db_init(void)
         L"Database initialized\n"
     );
 
+    /*
+     * Migration: thêm cột cho Retry Queue nếu chưa có
+     * (ALTER TABLE ADD COLUMN lỗi vô hại nếu cột đã tồn tại,
+     * nên cố tình bỏ qua kết quả trả về).
+     */
+    sqlite3_exec(
+        g_db,
+        "ALTER TABLE activity_logs ADD COLUMN retry_count INTEGER DEFAULT 0;",
+        NULL, NULL, NULL
+    );
+
+    sqlite3_exec(
+        g_db,
+        "ALTER TABLE activity_logs ADD COLUMN next_retry_at INTEGER DEFAULT 0;",
+        NULL, NULL, NULL
+    );
+
     return 1;
 }
 
@@ -509,6 +526,8 @@ int db_get_unsynced_records(
         "end_time "
         "FROM activity_logs "
         "WHERE synced = 0 "
+        "AND next_retry_at <= CAST(strftime('%s','now') AS INTEGER) "
+        "ORDER BY next_retry_at ASC "
         "LIMIT ?;";
 
     sqlite3_stmt* stmt = NULL;
@@ -609,6 +628,79 @@ int db_mark_synced(int id)
         sqlite3_step(stmt);
 
     sqlite3_finalize(stmt);
+
+    return rc == SQLITE_DONE;
+}
+
+/*
+ * Đánh dấu 1 record vừa gửi lên cloud thất bại: tăng
+ * retry_count và tính lại next_retry_at theo kiểu
+ * exponential backoff (2^retry_count * base, giới hạn
+ * bởi max), để không spam server liên tục khi mất mạng
+ * dài ngày, đồng thời tự thử lại nhanh hơn khi vừa lỗi.
+ */
+int db_mark_sync_failed(int id)
+{
+    if (!g_db)
+        return 0;
+
+    AppSettings s;
+    settings_get(&s);
+
+    /* Lấy retry_count hiện tại */
+    const char* select_sql =
+        "SELECT retry_count FROM activity_logs WHERE id = ?;";
+
+    sqlite3_stmt* select_stmt = NULL;
+    int retry_count = 0;
+
+    if (
+        sqlite3_prepare_v2(g_db, select_sql, -1, &select_stmt, NULL)
+        == SQLITE_OK
+    )
+    {
+        sqlite3_bind_int(select_stmt, 1, id);
+
+        if (sqlite3_step(select_stmt) == SQLITE_ROW)
+            retry_count = sqlite3_column_int(select_stmt, 0);
+
+        sqlite3_finalize(select_stmt);
+    }
+
+    retry_count++;
+
+    /*
+     * backoff = base * 2^retry_count, giới hạn bởi max.
+     * Giới hạn retry_count dùng để tính lũy thừa ở 20 để
+     * tránh tràn số nếu retry_count quá lớn theo thời gian.
+     */
+    int exp_cap = retry_count > 20 ? 20 : retry_count;
+    long long backoff = (long long)s.retry_backoff_base_sec << exp_cap;
+
+    if (backoff > s.retry_backoff_max_sec || backoff <= 0)
+        backoff = s.retry_backoff_max_sec;
+
+    const char* update_sql =
+        "UPDATE activity_logs "
+        "SET retry_count = ?, "
+        "next_retry_at = CAST(strftime('%s','now') AS INTEGER) + ? "
+        "WHERE id = ?;";
+
+    sqlite3_stmt* update_stmt = NULL;
+
+    if (
+        sqlite3_prepare_v2(g_db, update_sql, -1, &update_stmt, NULL)
+        != SQLITE_OK
+    )
+        return 0;
+
+    sqlite3_bind_int(update_stmt, 1, retry_count);
+    sqlite3_bind_int64(update_stmt, 2, backoff);
+    sqlite3_bind_int(update_stmt, 3, id);
+
+    int rc = sqlite3_step(update_stmt);
+
+    sqlite3_finalize(update_stmt);
 
     return rc == SQLITE_DONE;
 }

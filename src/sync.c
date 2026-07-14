@@ -68,8 +68,10 @@ void sync_pending_records(void)
         }
         else
         {
+            db_mark_sync_failed(records[i].id);
+
             wprintf(
-                L"[SYNC] Send failed: %d\n",
+                L"[SYNC] Send failed: %d (se tu thu lai sau, backoff tang dan)\n",
                 records[i].id
             );
         }

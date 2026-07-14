@@ -6,6 +6,7 @@
 #include "../include/config.h"
 
 #include <windows.h>
+#include <wincrypt.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -33,6 +34,13 @@ static void set_defaults(AppSettings* s)
     s->summary_interval_sec = 300;
     s->min_duration_sec     = 2;
     s->autostart_enabled    = 0;
+
+    s->retry_backoff_base_sec = 10;   /* lần đầu thất bại: chờ 10s */
+    s->retry_backoff_max_sec  = 1800; /* tối đa chờ 30 phút giữa 2 lần thử */
+
+    s->remote_view_enabled = 0;
+    s->remote_view_port    = 8787;
+    s->remote_view_token[0] = '\0';
 
     s->excluded_processes[0] = '\0';
     s->supabase_url[0]       = '\0';
@@ -119,6 +127,16 @@ static void parse_line(
         s->min_duration_sec = atoi(value);
     else if (strcmp(key, "autostart_enabled") == 0)
         s->autostart_enabled = atoi(value);
+    else if (strcmp(key, "retry_backoff_base_sec") == 0)
+        s->retry_backoff_base_sec = atoi(value);
+    else if (strcmp(key, "retry_backoff_max_sec") == 0)
+        s->retry_backoff_max_sec = atoi(value);
+    else if (strcmp(key, "remote_view_enabled") == 0)
+        s->remote_view_enabled = atoi(value);
+    else if (strcmp(key, "remote_view_port") == 0)
+        s->remote_view_port = atoi(value);
+    else if (strcmp(key, "remote_view_token") == 0)
+        snprintf(s->remote_view_token, sizeof(s->remote_view_token), "%s", value);
     else if (strcmp(key, "excluded_processes") == 0)
         snprintf(s->excluded_processes, MAX_EXCLUDED_LEN, "%s", value);
     else if (strcmp(key, "supabase_url") == 0)
@@ -167,6 +185,51 @@ void settings_load(AppSettings* out)
         settings_save(out);
     }
 
+    /*
+     * Tự sinh token ngẫu nhiên cho Remote View nếu chưa có
+     * (lần đầu chạy, hoặc token bị xóa trắng).
+     */
+    if (out->remote_view_token[0] == '\0')
+    {
+        HCRYPTPROV hProv = 0;
+        unsigned char randomBytes[16];
+
+        if (
+            CryptAcquireContextW(
+                &hProv, NULL, NULL,
+                PROV_RSA_FULL,
+                CRYPT_VERIFYCONTEXT
+            )
+        )
+        {
+            CryptGenRandom(hProv, sizeof(randomBytes), randomBytes);
+            CryptReleaseContext(hProv, 0);
+
+            for (int i = 0; i < 16; i++)
+            {
+                snprintf(
+                    out->remote_view_token + i * 2,
+                    3,
+                    "%02x",
+                    randomBytes[i]
+                );
+            }
+        }
+        else
+        {
+            /* Fallback hiếm khi xảy ra nếu CryptAcquireContext lỗi */
+            snprintf(
+                out->remote_view_token,
+                sizeof(out->remote_view_token),
+                "%08x%08x",
+                (unsigned int)GetTickCount(),
+                (unsigned int)GetCurrentProcessId()
+            );
+        }
+
+        settings_save(out);
+    }
+
     EnterCriticalSection(&g_settings_lock);
     g_settings = *out;
     LeaveCriticalSection(&g_settings_lock);
@@ -193,6 +256,11 @@ int settings_save(const AppSettings* s)
     fprintf(f, "excluded_processes=%s\n", s->excluded_processes);
     fprintf(f, "supabase_url=%s\n", s->supabase_url);
     fprintf(f, "supabase_key=%s\n", s->supabase_key);
+    fprintf(f, "retry_backoff_base_sec=%d\n", s->retry_backoff_base_sec);
+    fprintf(f, "retry_backoff_max_sec=%d\n", s->retry_backoff_max_sec);
+    fprintf(f, "remote_view_enabled=%d\n", s->remote_view_enabled);
+    fprintf(f, "remote_view_port=%d\n", s->remote_view_port);
+    fprintf(f, "remote_view_token=%s\n", s->remote_view_token);
 
     fclose(f);
 

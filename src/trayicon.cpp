@@ -4,6 +4,7 @@
 #include "logindialog.h"
 #include "settingsdialog.h"
 #include "supabasesetupdialog.h"
+#include "remoteviewdialog.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -35,8 +36,10 @@ TrayIcon::TrayIcon(QObject *parent) : QObject(parent)
 
     m_settingsAction = m_menu.addAction("Settings...", this, &TrayIcon::onSettings);
     m_supabaseAction = m_menu.addAction("Supabase Setup...", this, &TrayIcon::onSupabaseSetup);
+    m_remoteViewAction = m_menu.addAction("Remote View...", this, &TrayIcon::onRemoteView);
 
     m_debugAction = m_menu.addAction("Show debug console", this, &TrayIcon::onToggleDebugConsole);
+    m_startWebSVAction = m_menu.addAction("Start Web Dashboard", this, &TrayIcon::onStartWebSVAction);
     m_debugAction->setCheckable(true);
 
     m_menu.addSeparator();
@@ -173,6 +176,12 @@ void TrayIcon::onSupabaseSetup()
     dlg.exec();
 }
 
+void TrayIcon::onRemoteView()
+{
+    RemoteViewDialog dlg;
+    dlg.exec();
+}
+
 void TrayIcon::onToggleDebugConsole()
 {
     m_debugVisible = !m_debugVisible;
@@ -183,6 +192,16 @@ void TrayIcon::onToggleDebugConsole()
         ShowWindow(console, m_debugVisible ? SW_SHOW : SW_HIDE);
 
     m_debugAction->setChecked(m_debugVisible);
+}
+
+void TrayIcon::onStartWebSVAction()
+{
+    system("pythonw ./dashboard/app.pyw");
+    // Start the WebSV server
+    if (system("pythonw ./dashboard/app.pyw") == -1)
+    {
+        QMessageBox::critical(nullptr, "JustInTime", "Failed to start WebSV server.");
+    }
 }
 
 void TrayIcon::onExit()

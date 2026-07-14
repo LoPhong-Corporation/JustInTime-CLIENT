@@ -34,6 +34,17 @@ typedef struct
 
 void monitor_activity(void);
 
+/*
+ * Lấy snapshot activity đang diễn ra ngay lúc này
+ * (process/title/thời điểm bắt đầu), thread-safe.
+ * Dùng cho remote view - xem real-time không qua cloud.
+ */
+void activity_get_current(
+    wchar_t* process_out, int process_size,
+    wchar_t* title_out, int title_size,
+    time_t* since_out
+);
+
 
 #ifdef __cplusplus
 }

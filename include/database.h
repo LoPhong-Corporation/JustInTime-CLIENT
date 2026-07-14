@@ -46,6 +46,12 @@ int db_get_unsynced_records(
 
 int db_mark_synced(int id);
 
+/*
+ * Đánh dấu 1 record gửi thất bại: tăng retry_count và
+ * tính lại thời điểm thử lại tiếp theo (exponential backoff).
+ */
+int db_mark_sync_failed(int id);
+
 int db_count_unsynced(void);
 
 int db_delete_old_records(int days);

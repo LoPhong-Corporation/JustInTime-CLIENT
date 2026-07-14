@@ -27,6 +27,28 @@ typedef struct
     int  autostart_enabled;
 
     /*
+     * Retry Queue: backoff cơ bản (giây) và giới hạn tối đa
+     * (giây) khi 1 record gửi lên cloud thất bại liên tiếp.
+     * next_retry = base * 2^so_lan_that_bai, giới hạn bởi max.
+     */
+    int  retry_backoff_base_sec;
+    int  retry_backoff_max_sec;
+
+    /*
+     * Remote View: cho phép xem số liệu real-time trực tiếp
+     * từ agent qua HTTP cục bộ, KHÔNG qua cloud, CHỈ ĐỌC
+     * (không có endpoint nào thay đổi được gì).
+     * Tắt mặc định - phải chủ động bật.
+     * Bảo vệ bằng token ngẫu nhiên (giống mã PIN dùng chung).
+     * LƯU Ý: đây là HTTP thường, không mã hóa - chỉ nên dùng
+     * trong mạng LAN/VPN tin cậy, không nên mở thẳng ra
+     * Internet công cộng.
+     */
+    int  remote_view_enabled;
+    int  remote_view_port;
+    char remote_view_token[64];
+
+    /*
      * Danh sách tên process bị loại trừ khỏi theo dõi,
      * cách nhau bởi dấu phẩy, không phân biệt hoa thường.
      * Ví dụ: "steam.exe,discord.exe"
