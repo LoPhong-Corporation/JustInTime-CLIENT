@@ -1,6 +1,6 @@
 # JustInTime Client
 
-> A lightweight native Windows activity monitoring agent written in C and C++.
+> A lightweight native Windows activity monitoring agent written in C, C++ and Python.
 
 ![Platform](https://img.shields.io/badge/Platform-Windows-blue)
 ![Language](https://img.shields.io/badge/Language-C-success)
@@ -46,10 +46,7 @@ The project follows an **offline-first** architecture, ensuring that activity da
 
 ## Planned
 
-- Windows Service
-- Auto Start
 - Background Worker
-- Dashboard
 - Multi-device synchronization
 - Automatic Update
 - Installer
@@ -234,7 +231,10 @@ cmake ..
 
 cmake --build .
 ```
-
+**YOU NEED TO INSTALL PYTHON WITH FLASK**
+```bash
+pip install flask
+```
 ---
 
 # Current Development Status
@@ -252,8 +252,8 @@ cmake --build .
 | Offline Queue | ✅ |
 | Retry Queue | ✅ |
 | Configuration | ✅ |
+| Dashboard | ✅ |
 | Windows Service | ⏳ |
-| Dashboard | ⏳ |
 | Installer | ⏳ |
 
 ---
