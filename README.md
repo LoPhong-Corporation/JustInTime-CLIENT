@@ -39,8 +39,6 @@ The project follows an **offline-first** architecture, ensuring that activity da
 ---
 
 ## Work In Progress
-
-- Building UI system
 - Building API connection between Dashboard and JustInTime Agent
 
 ---
@@ -50,7 +48,6 @@ The project follows an **offline-first** architecture, ensuring that activity da
 - Background Worker
 - Multi-device synchronization
 - Automatic Update
-- Installer
 
 ---
 
@@ -208,6 +205,7 @@ Current local database table
 - CMake
 - Python 3.13
 - Flask
+- Go
 
 ---
 
@@ -254,55 +252,8 @@ pip install flask psutil
 | Retry Queue | ✅ |
 | Configuration | ✅ |
 | Dashboard | ✅ |
+| Installer | ✅ |
 | Windows Service | ⏳ |
-| Installer | ⏳ |
-
----
-
-# Roadmap
-
-## Version 0.1
-
-- Activity Monitor
-- SQLite
-- Unicode
-- Local Storage
-- HTTP Sync
-- Supabase Edge Functions
-
----
-
-## Version 0.2
-
-- Retry Queue
-- Configuration
-- Logging
-- Error Recovery
-
----
-
-## Version 0.3
-
-- Windows Service
-- Background Worker
-- Auto Start
-
----
-
-## Version 0.4
-
-- Dashboard
-- Statistics
-- Multi-device Support
-
----
-
-## Version 1.0
-
-- Stable Release
-- Automatic Update
-- Installer
-- Complete Documentation
 
 ---
 
