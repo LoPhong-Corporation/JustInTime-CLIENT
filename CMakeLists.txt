@@ -12,6 +12,7 @@ set(CMAKE_AUTORCC ON)
 # Nếu CMake không tự tìm thấy Qt6, set CMAKE_PREFIX_PATH trỏ tới
 # thư mục cài Qt, ví dụ:
 #   -DCMAKE_PREFIX_PATH="C:/Qt/6.7.0/msvc2019_64"
+set(CMAKE_PREFIX_PATH "C:/Qt/6.11.1/msvc2022_64")
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 
 add_executable(JustInTime WIN32
@@ -43,15 +44,15 @@ add_executable(JustInTime WIN32
 
         # ---- UI Qt (C++) ----
         src/main.cpp
-        src/trayicon.h
+        "include/trayicon.h"
         src/trayicon.cpp
-        src/logindialog.h
+        "include/logindialog.h"
         src/logindialog.cpp
-        src/settingsdialog.h
+        "include/settingsdialog.h"
         src/settingsdialog.cpp
-        src/supabasesetupdialog.h
+        "include/supabasesetupdialog.h"
         src/supabasesetupdialog.cpp
-        src/remoteviewdialog.h
+        "include/remoteviewdialog.h"
         src/remoteviewdialog.cpp
 )
 
@@ -67,4 +68,28 @@ target_link_libraries(
         crypt32
         advapi32
         ws2_32
+)
+
+# ------------------------------------------------------------------
+# Đưa cả 2 dashboard (Python + Go) ra cạnh JustInTime.exe sau khi
+# build, để tray menu "Dashboards" tìm thấy chúng ngay mà không phải
+# dò ngược cây thư mục (xem findResourceDir() trong trayicon.cpp).
+# Không lỗi nếu dashboard-go/dashboard.exe chưa được build (go build
+# ./cmd/dashboard) - chỉ là mục "Open Local Dashboard (Go)" sẽ báo
+# không tìm thấy cho tới khi bạn build nó.
+# ------------------------------------------------------------------
+
+add_custom_command(TARGET JustInTime POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_SOURCE_DIR}/dashboard"
+                "$<TARGET_FILE_DIR:JustInTime>/dashboard"
+        COMMENT "Copying Python dashboard next to JustInTime.exe"
+)
+
+add_custom_command(TARGET JustInTime POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+                -DSRC="${CMAKE_SOURCE_DIR}/dashboard-go/dashboard.exe"
+                -DDEST_DIR="$<TARGET_FILE_DIR:JustInTime>/dashboard-go"
+                -P "${CMAKE_SOURCE_DIR}/cmake/copy_if_exists.cmake"
+        COMMENT "Copying Go dashboard next to JustInTime.exe (skipped if not built yet)"
 )

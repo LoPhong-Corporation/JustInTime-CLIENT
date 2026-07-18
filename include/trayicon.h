@@ -32,13 +32,30 @@ private slots:
     void onViewReport();
     void onSettings();
     void onSupabaseSetup();
+    void onRemoteView();
     void onToggleDebugConsole();
+    void onOpenPythonDashboard();
+    void onOpenGoDashboard();
     void onExit();
+    //void onStartWebSVAction();
     void onActivated(QSystemTrayIcon::ActivationReason reason);
 
 private:
     void rebuildMenu();
     void updateTooltip();
+
+    /*
+     * Mở (hoặc chỉ mở trình duyệt tới, nếu đã đang chạy sẵn)
+     * một trong hai dashboard. Dùng chung logic tìm thư mục/
+     * kiểm tra cổng cho cả hai, chỉ khác lệnh khởi chạy.
+     */
+    void launchDashboard(
+        const QString &label,
+        quint16 port,
+        const QString &program,
+        const QStringList &arguments,
+        const QString &workingDir
+    );
 
     QSystemTrayIcon m_trayIcon;
     QMenu           m_menu;
@@ -50,8 +67,14 @@ private:
     QAction *m_reportAction   = nullptr;
     QAction *m_settingsAction = nullptr;
     QAction *m_supabaseAction = nullptr;
+    QAction *m_remoteViewAction = nullptr;
     QAction *m_debugAction    = nullptr;
     QAction *m_exitAction     = nullptr;
+    QAction *m_startWebSVAction = nullptr;
+
+    QMenu   *m_dashboardMenu       = nullptr;
+    QAction *m_pythonDashboardAction = nullptr;
+    QAction *m_goDashboardAction     = nullptr;
 
     std::atomic<bool> m_paused{false};
     bool m_debugVisible = false;
