@@ -1,11 +1,12 @@
 # JustInTime Client
 
-> A lightweight native Windows activity monitoring agent written in C, C++ and Python.
+> A lightweight native Windows activity monitoring agent written in C, C++, Python and Go (Python and Go are used for dashboard).
 
 ![Platform](https://img.shields.io/badge/Platform-Windows-blue)
 ![Language](https://img.shields.io/badge/Language-C-success)
 ![Language](https://img.shields.io/badge/Language-C++-success)
 ![Language](https://img.shields.io/badge/Language-Python-success)
+![Language](https://img.shields.io/badge/Language-Go-success)
 ![Compiler](https://img.shields.io/badge/Compiler-MSVC-purple)
 ![Database](https://img.shields.io/badge/Database-SQLite-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
