@@ -1,10 +1,11 @@
 # JustInTime Client
 
-> A lightweight native Windows activity monitoring agent written in C and C++.
+> A lightweight native Windows activity monitoring agent written in C, C++ and Python.
 
 ![Platform](https://img.shields.io/badge/Platform-Windows-blue)
 ![Language](https://img.shields.io/badge/Language-C-success)
 ![Language](https://img.shields.io/badge/Language-C++-success)
+![Language](https://img.shields.io/badge/Language-Python-success)
 ![Compiler](https://img.shields.io/badge/Compiler-MSVC-purple)
 ![Database](https://img.shields.io/badge/Database-SQLite-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -45,10 +46,7 @@ The project follows an **offline-first** architecture, ensuring that activity da
 
 ## Planned
 
-- Windows Service
-- Auto Start
 - Background Worker
-- Dashboard
 - Multi-device synchronization
 - Automatic Update
 - Installer
@@ -207,6 +205,8 @@ Current local database table
 - Supabase Edge Functions
 - PostgreSQL
 - CMake
+- Python 3.13
+- Flask
 
 ---
 
@@ -231,7 +231,10 @@ cmake ..
 
 cmake --build .
 ```
-
+And Python with Flask package, Psutil package (Recommend Python 3.13)
+```bash
+pip install flask psutil
+```
 ---
 
 # Current Development Status
@@ -249,8 +252,8 @@ cmake --build .
 | Offline Queue | ✅ |
 | Retry Queue | ✅ |
 | Configuration | ✅ |
+| Dashboard | ✅ |
 | Windows Service | ⏳ |
-| Dashboard | ⏳ |
 | Installer | ⏳ |
 
 ---
