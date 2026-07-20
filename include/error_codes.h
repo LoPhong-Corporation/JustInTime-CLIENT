@@ -13,6 +13,7 @@
 #define ERR_AUTH_INVALID_INPUT  "E1002"
 #define ERR_AUTH_SERVER_REJECT  "E1003"
 #define ERR_AUTH_NO_SESSION     "E1004"
+#define ERR_AUTH_REFRESH_FAIL   "E1005"
 
 /* Database */
 #define ERR_DB_OPEN_FAIL        "E2001"

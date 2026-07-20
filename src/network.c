@@ -103,52 +103,25 @@ static int build_json_body(
 }
 
 /*
- * Gui mot record len Edge Function "sync-activity" qua HTTPS.
- * Function ben server se dung service_role key (khong lo ra
- * client) de upsert vao bang activity_logs, dua tren
- * (device_id, start_time) de tranh trung du lieu neu record
- * da duoc gui thanh cong truoc do nhung chua kip danh dau
- * "synced" cuc bo.
+ * Thực hiện đúng 1 lần gọi HTTP POST tới Edge Function
+ * sync-activity với access_token truyền vào. Tách riêng để
+ * network_send_record() có thể gọi lại lần 2 sau khi refresh
+ * token, mà không phải lặp lại toàn bộ code dựng request.
  *
- * Yeu cau: da deploy Edge Function sync-activity, va bang
- * activity_logs co UNIQUE constraint tren (device_id, start_time).
+ * Trả về 1 nếu request được gửi/nhận phản hồi thành công
+ * (bất kể status HTTP là gì); *status_out sẽ chứa mã HTTP,
+ * và resp_out chứa body phản hồi (để log khi có lỗi).
+ * Trả về 0 nếu bản thân request thất bại ở tầng WinHTTP
+ * (không kết nối được, DNS lỗi, v.v.).
  */
-int network_send_record(
-    const SyncRecord* rec)
+static int try_send_record(
+    const char* body,
+    int body_len,
+    const char* access_token_str,
+    DWORD* status_out,
+    char* resp_out,
+    int resp_out_size)
 {
-    if (!rec)
-        return 0;
-
-    /*
-     * Bắt buộc phải đăng nhập mới sync lên cloud được,
-     * vì Edge Function cần access_token thật của user để
-     * biết record này thuộc về ai (user_id).
-     * Dữ liệu vẫn được lưu đầy đủ ở local (SQLite + backup
-     * JSON) dù chưa đăng nhập, chỉ là chưa lên được cloud.
-     */
-    if (!auth_is_logged_in())
-    {
-        return 0;
-    }
-
-    AuthSession session;
-    auth_get_session(&session);
-
-    char body[16384] = {0};
-
-    int body_len =
-        build_json_body(
-            rec,
-            body,
-            sizeof(body)
-        );
-
-    if (body_len <= 0 || body_len >= (int)sizeof(body))
-    {
-        wprintf(L"[SYNC][%hs] Khong the tao JSON body (qua dai hoac loi)\n", ERR_SYNC_PAYLOAD_TOO_BIG);
-        return 0;
-    }
-
     char base_url[MAX_URL_LEN] = {0};
     char apikey_str[MAX_KEY_LEN] = {0};
 
@@ -177,11 +150,11 @@ int network_send_record(
 
     MultiByteToWideChar(
         CP_UTF8, 0,
-        session.access_token, -1,
+        access_token_str, -1,
         access_token, MAX_TOKEN_LEN
     );
 
-    int success = 0;
+    int ok = 0;
 
     HINTERNET hSession = WinHttpOpen(
         L"JustInTime-Agent/1.0",
@@ -256,61 +229,44 @@ int network_send_record(
                     WINHTTP_NO_HEADER_INDEX
                 );
 
-                if (status >= 200 && status < 300)
+                DWORD total_read = 0;
+
+                for (;;)
                 {
-                    success = 1;
-                }
-                else
-                {
-                    /*
-                     * Đọc body thực tế để biết chính xác
-                     * Supabase từ chối vì lý do gì
-                     * (thay vì chỉ biết mã HTTP).
-                     */
-                    char resp_body[4096] = {0};
-                    DWORD total_read = 0;
+                    DWORD available = 0;
 
-                    for (;;)
-                    {
-                        DWORD available = 0;
+                    if (
+                        !WinHttpQueryDataAvailable(hRequest, &available)
+                        || available == 0
+                    )
+                        break;
 
-                        if (
-                            !WinHttpQueryDataAvailable(hRequest, &available)
-                            || available == 0
+                    if (available > (DWORD)resp_out_size - 1 - total_read)
+                        available = (DWORD)resp_out_size - 1 - total_read;
+
+                    if (available == 0)
+                        break;
+
+                    DWORD bytes_read = 0;
+
+                    if (
+                        !WinHttpReadData(
+                            hRequest,
+                            resp_out + total_read,
+                            available,
+                            &bytes_read
                         )
-                            break;
+                        || bytes_read == 0
+                    )
+                        break;
 
-                        if (available > sizeof(resp_body) - 1 - total_read)
-                            available = sizeof(resp_body) - 1 - total_read;
-
-                        if (available == 0)
-                            break;
-
-                        DWORD bytes_read = 0;
-
-                        if (
-                            !WinHttpReadData(
-                                hRequest,
-                                resp_body + total_read,
-                                available,
-                                &bytes_read
-                            )
-                            || bytes_read == 0
-                        )
-                            break;
-
-                        total_read += bytes_read;
-                    }
-
-                    resp_body[total_read] = '\0';
-
-                    wprintf(
-                        L"[SYNC][%hs] Supabase tra ve loi HTTP %lu: %hs\n",
-                        ERR_SYNC_SERVER_ERROR,
-                        status,
-                        resp_body
-                    );
+                    total_read += bytes_read;
                 }
+
+                resp_out[total_read] = '\0';
+
+                *status_out = status;
+                ok = 1;
             }
             else
             {
@@ -345,5 +301,125 @@ int network_send_record(
 
     WinHttpCloseHandle(hSession);
 
-    return success;
+    return ok;
+}
+
+/*
+ * Gui mot record len Edge Function "sync-activity" qua HTTPS.
+ * Function ben server se dung service_role key (khong lo ra
+ * client) de upsert vao bang activity_logs, dua tren
+ * (device_id, start_time) de tranh trung du lieu neu record
+ * da duoc gui thanh cong truoc do nhung chua kip danh dau
+ * "synced" cuc bo.
+ *
+ * Yeu cau: da deploy Edge Function sync-activity, va bang
+ * activity_logs co UNIQUE constraint tren (device_id, start_time).
+ *
+ * Neu Supabase tra ve 401 (access_token het han - vi du loi
+ * "UNAUTHORIZED_ASYMMETRIC_JWT" / "Invalid JWT"), tu dong thu
+ * refresh token 1 lan roi gui lai, thay vi that bai lien tuc
+ * cho toi khi nguoi dung tu dang xuat/dang nhap lai.
+ */
+int network_send_record(
+    const SyncRecord* rec)
+{
+    if (!rec)
+        return 0;
+
+    /*
+     * Bắt buộc phải đăng nhập mới sync lên cloud được,
+     * vì Edge Function cần access_token thật của user để
+     * biết record này thuộc về ai (user_id).
+     * Dữ liệu vẫn được lưu đầy đủ ở local (SQLite + backup
+     * JSON) dù chưa đăng nhập, chỉ là chưa lên được cloud.
+     */
+    if (!auth_is_logged_in())
+    {
+        return 0;
+    }
+
+    AuthSession session;
+    auth_get_session(&session);
+
+    char body[16384] = {0};
+
+    int body_len =
+        build_json_body(
+            rec,
+            body,
+            sizeof(body)
+        );
+
+    if (body_len <= 0 || body_len >= (int)sizeof(body))
+    {
+        wprintf(L"[SYNC][%hs] Khong the tao JSON body (qua dai hoac loi)\n", ERR_SYNC_PAYLOAD_TOO_BIG);
+        return 0;
+    }
+
+    DWORD status = 0;
+    char resp_body[4096] = {0};
+
+    if (!try_send_record(body, body_len, session.access_token, &status, resp_body, sizeof(resp_body)))
+    {
+        /* Loi tang WinHTTP (khong ket noi duoc, v.v.) - try_send_record da tu log. */
+        return 0;
+    }
+
+    if (status >= 200 && status < 300)
+    {
+        return 1;
+    }
+
+    if (status == 401)
+    {
+        wprintf(
+            L"[SYNC][%hs] Supabase tra ve loi HTTP 401 (access_token co the da het han): %hs\n"
+            L"[SYNC] Dang thu refresh token...\n",
+            ERR_SYNC_SERVER_ERROR,
+            resp_body
+        );
+
+        if (auth_refresh_session())
+        {
+            AuthSession refreshed;
+            auth_get_session(&refreshed);
+
+            DWORD retry_status = 0;
+            char retry_resp[4096] = {0};
+
+            if (
+                try_send_record(body, body_len, refreshed.access_token, &retry_status, retry_resp, sizeof(retry_resp))
+                && retry_status >= 200 && retry_status < 300
+            )
+            {
+                wprintf(L"[SYNC] Gui lai sau khi refresh token thanh cong\n");
+                return 1;
+            }
+
+            wprintf(
+                L"[SYNC][%hs] Van that bai sau khi refresh token (HTTP %lu): %hs\n",
+                ERR_SYNC_SERVER_ERROR,
+                retry_status,
+                retry_resp
+            );
+        }
+        else
+        {
+            wprintf(
+                L"[SYNC][%hs] Refresh token that bai - can dang nhap lai qua tray\n",
+                ERR_AUTH_REFRESH_FAIL
+            );
+        }
+
+        return 0;
+    }
+
+    wprintf(
+        L"[SYNC][%hs] Supabase tra ve loi HTTP %lu: %hs\n",
+        ERR_SYNC_SERVER_ERROR,
+        status,
+        resp_body
+    );
+
+    return 0;
 }

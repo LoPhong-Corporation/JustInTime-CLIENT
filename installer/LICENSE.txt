@@ -1,21 +1,18 @@
-MIT License
+JustInTime - End User Notice
+=============================
 
-Copyright (c) 2026 LoPhong Corporation
+This build of JustInTime includes three components:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. The JustInTime Agent (C/C++, Qt) - tracks application usage locally
+   and optionally syncs it to your own Supabase project.
+2. A Python-based web dashboard (Flask) - optional, requires a local
+   Python installation.
+3. A Go-based local/offline dashboard - optional, a single self-
+   contained executable, no extra runtime required.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Your activity data is stored locally on this machine at
+%APPDATA%\JustInTime and is only sent to the cloud if you explicitly
+log in and configure Supabase sync.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Replace this file with your project's actual license text (MIT,
+Apache-2.0, proprietary, etc.) before distributing the installer.

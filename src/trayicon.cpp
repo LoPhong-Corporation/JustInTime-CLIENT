@@ -5,6 +5,7 @@
 #include "settingsdialog.h"
 #include "supabasesetupdialog.h"
 #include "remoteviewdialog.h"
+#include "updatechecker.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -24,6 +25,7 @@
 extern "C" {
 #include "../include/auth.h"
 #include "../include/database.h"
+#include "../include/config.h"
 }
 
 namespace {
@@ -106,9 +108,14 @@ TrayIcon::TrayIcon(QObject *parent) : QObject(parent)
     m_pythonDashboardAction->setToolTip(dashboardTip);
     m_goDashboardAction->setToolTip(dashboardTip);
 
-    m_debugAction = m_menu.addAction("Show debug console", this, &TrayIcon::onToggleDebugConsole);
+    m_debugAction = m_menu.addAction("Show debug console (DEVELOPER ONLY)", this, &TrayIcon::onToggleDebugConsole);
     //m_startWebSVAction = m_menu.addAction("Start Web Dashboard", this, &TrayIcon::onStartWebSVAction);
     m_debugAction->setCheckable(true);
+
+    m_menu.addSeparator();
+
+    m_checkUpdateAction = m_menu.addAction("Check for Updates...", this, &TrayIcon::onCheckForUpdates);
+    m_aboutAction       = m_menu.addAction("About JustInTime...", this, &TrayIcon::onAbout);
 
     m_menu.addSeparator();
     m_exitAction = m_menu.addAction("Exit", this, &TrayIcon::onExit);
@@ -116,6 +123,32 @@ TrayIcon::TrayIcon(QObject *parent) : QObject(parent)
     m_trayIcon.setContextMenu(&m_menu);
 
     connect(&m_trayIcon, &QSystemTrayIcon::activated, this, &TrayIcon::onActivated);
+    connect(&m_trayIcon, &QSystemTrayIcon::messageClicked, this, &TrayIcon::onTrayMessageClicked);
+
+    /*
+     * Kiểm tra cập nhật: 1 lần khi khởi động (chờ 5s cho app ổn
+     * định), sau đó định kỳ mỗi 6 tiếng. Đây là kiểm tra NGẦM
+     * (m_manualUpdateCheck = false) - chỉ hiện tray notification
+     * khi thực sự CÓ bản mới, không làm phiền người dùng bằng
+     * thông báo "đã là bản mới nhất" mỗi 6 tiếng.
+     */
+    m_updateChecker = new UpdateChecker(this);
+
+    connect(m_updateChecker, &UpdateChecker::updateAvailable, this, &TrayIcon::onUpdateAvailable);
+    connect(m_updateChecker, &UpdateChecker::upToDate, this, &TrayIcon::onUpdateUpToDate);
+    connect(m_updateChecker, &UpdateChecker::checkFailed, this, &TrayIcon::onUpdateCheckFailed);
+
+    m_updateTimer.setInterval(6 * 60 * 60 * 1000); // 6 gio
+    connect(&m_updateTimer, &QTimer::timeout, this, [this]() {
+        m_manualUpdateCheck = false;
+        m_updateChecker->checkNow();
+    });
+    m_updateTimer.start();
+
+    QTimer::singleShot(5000, this, [this]() {
+        m_manualUpdateCheck = false;
+        m_updateChecker->checkNow();
+    });
 
     rebuildMenu();
 }
@@ -369,6 +402,126 @@ void TrayIcon::onOpenGoDashboard()
      * khay hệ thống thứ hai (xem cmd/dashboard/main.go).
      */
     launchDashboard("the Go dashboard", 5000, exePath, {}, goDir);
+}
+
+void TrayIcon::onAbout()
+{
+    QMessageBox::about(
+        nullptr,
+        "About JustInTime",
+        QString(
+            "<h3>JustInTime</h3>"
+            "<p>Version %1</p>"
+            "<p>Lightweight activity tracker with optional Supabase cloud sync, "
+            "a local/offline dashboard, and cross-device messaging.</p>"
+            "<p>Publisher: %2<br>"
+            "<a href=\"%3\">%3</a></p>"
+        ).arg(APP_VERSION, APP_PUBLISHER, APP_WEBSITE)
+    );
+}
+
+void TrayIcon::onCheckForUpdates()
+{
+    m_manualUpdateCheck = true;
+
+    m_checkUpdateAction->setEnabled(false);
+    m_checkUpdateAction->setText("Checking for updates...");
+
+    m_updateChecker->checkNow();
+}
+
+void TrayIcon::onUpdateAvailable(const QString &version, const QString &downloadUrl, const QString &notes)
+{
+    m_checkUpdateAction->setEnabled(true);
+    m_checkUpdateAction->setText("Check for Updates...");
+
+    m_pendingDownloadUrl = downloadUrl;
+
+    if (!m_downloadUpdateAction)
+    {
+        m_downloadUpdateAction = new QAction(QString(), &m_menu);
+        m_menu.insertAction(m_checkUpdateAction, m_downloadUpdateAction);
+
+        connect(m_downloadUpdateAction, &QAction::triggered, this, [this]() {
+            if (!m_pendingDownloadUrl.isEmpty())
+                QDesktopServices::openUrl(QUrl(m_pendingDownloadUrl));
+        });
+    }
+
+    m_downloadUpdateAction->setText(QString("\u2B06 Update available: v%1").arg(version));
+    m_downloadUpdateAction->setVisible(true);
+
+    /*
+     * Chỉ hiện balloon notification 1 lần cho mỗi phiên bản mới
+     * (tránh spam mỗi 6 tiếng nếu người dùng chưa cập nhật ngay),
+     * trừ khi người dùng tự bấm "Check for Updates..." thì luôn
+     * hiện để xác nhận là đã kiểm tra xong.
+     */
+    if (m_manualUpdateCheck || m_lastNotifiedVersion != version)
+    {
+        m_lastNotifiedVersion = version;
+
+        QString message = QString("Version %1 is available.").arg(version);
+
+        if (!notes.isEmpty())
+            message += QString("\n%1").arg(notes);
+
+        message += QStringLiteral("\n\nClick here to download.");
+
+        m_trayIcon.showMessage(
+            "JustInTime Update Available",
+            message,
+            QSystemTrayIcon::Information,
+            8000
+        );
+    }
+
+    m_manualUpdateCheck = false;
+}
+
+void TrayIcon::onUpdateUpToDate()
+{
+    m_checkUpdateAction->setEnabled(true);
+    m_checkUpdateAction->setText("Check for Updates...");
+
+    if (m_manualUpdateCheck)
+    {
+        QMessageBox::information(
+            nullptr,
+            "JustInTime",
+            QString("You're running the latest version (%1).").arg(APP_VERSION)
+        );
+    }
+
+    m_manualUpdateCheck = false;
+}
+
+void TrayIcon::onUpdateCheckFailed(const QString &reason)
+{
+    m_checkUpdateAction->setEnabled(true);
+    m_checkUpdateAction->setText("Check for Updates...");
+
+    /*
+     * Kiểm tra ngầm thất bại (vd không có mạng) thì âm thầm bỏ
+     * qua - sẽ tự thử lại ở lần định kỳ tiếp theo. Chỉ báo lỗi
+     * ra ngoài khi người dùng chủ động bấm kiểm tra.
+     */
+    if (m_manualUpdateCheck)
+    {
+        QMessageBox::warning(
+            nullptr,
+            "JustInTime",
+            QString("Could not check for updates:\n%1").arg(reason)
+        );
+    }
+
+    m_manualUpdateCheck = false;
+}
+
+void TrayIcon::onTrayMessageClicked()
+{
+    if (!m_pendingDownloadUrl.isEmpty())
+        QDesktopServices::openUrl(QUrl(m_pendingDownloadUrl));
 }
 
 void TrayIcon::onExit()

@@ -58,6 +58,24 @@ int auth_login(
 void auth_logout(void);
 
 /*
+ * Dùng refresh_token đã lưu (từ lần đăng nhập gần nhất) để
+ * xin access_token mới, khi access_token hiện tại hết hạn
+ * hoặc bị Supabase từ chối (HTTP 401, vd "Invalid JWT").
+ *
+ * Nếu thành công: session trong bộ nhớ VÀ session.dat trên
+ * đĩa đều được cập nhật với access_token/refresh_token mới,
+ * y hệt sau một lần đăng nhập bình thường.
+ *
+ * Nếu thất bại (refresh_token cũng đã hết hạn/bị thu hồi,
+ * hoặc project đã đổi JWT signing key khiến toàn bộ token
+ * cũ - kể cả refresh_token - không còn hợp lệ): trả về 0,
+ * và người dùng cần đăng nhập lại thủ công qua tray.
+ *
+ * Trả về 1 nếu refresh thành công, 0 nếu thất bại.
+ */
+int auth_refresh_session(void);
+
+/*
  * Nạp lại session đã lưu từ trước (lúc khởi động app).
  * Trả về 1 nếu có session hợp lệ, 0 nếu chưa đăng nhập.
  */

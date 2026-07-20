@@ -7,8 +7,11 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QAction>
+#include <QTimer>
 
 #include <atomic>
+
+class UpdateChecker;
 
 class TrayIcon : public QObject
 {
@@ -36,6 +39,12 @@ private slots:
     void onToggleDebugConsole();
     void onOpenPythonDashboard();
     void onOpenGoDashboard();
+    void onAbout();
+    void onCheckForUpdates();
+    void onUpdateAvailable(const QString &version, const QString &downloadUrl, const QString &notes);
+    void onUpdateUpToDate();
+    void onUpdateCheckFailed(const QString &reason);
+    void onTrayMessageClicked();
     void onExit();
     //void onStartWebSVAction();
     void onActivated(QSystemTrayIcon::ActivationReason reason);
@@ -75,6 +84,16 @@ private:
     QMenu   *m_dashboardMenu       = nullptr;
     QAction *m_pythonDashboardAction = nullptr;
     QAction *m_goDashboardAction     = nullptr;
+
+    QAction *m_aboutAction         = nullptr;
+    QAction *m_checkUpdateAction   = nullptr;
+    QAction *m_downloadUpdateAction = nullptr;
+
+    UpdateChecker *m_updateChecker = nullptr;
+    QTimer         m_updateTimer;
+    QString        m_pendingDownloadUrl;
+    QString        m_lastNotifiedVersion;
+    bool           m_manualUpdateCheck = false;
 
     std::atomic<bool> m_paused{false};
     bool m_debugVisible = false;

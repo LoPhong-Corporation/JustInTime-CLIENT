@@ -572,6 +572,137 @@ void auth_logout(void)
     DeleteFileA(path);
 }
 
+int auth_refresh_session(void)
+{
+    ensure_lock();
+
+    char refresh_token[512] = {0};
+
+    EnterCriticalSection(&g_session_lock);
+    snprintf(refresh_token, sizeof(refresh_token), "%s", g_session.refresh_token);
+    LeaveCriticalSection(&g_session_lock);
+
+    if (refresh_token[0] == '\0')
+    {
+        /*
+         * Chưa từng đăng nhập, hoặc session trong bộ nhớ
+         * đang trống (vd auth_load_session() thất bại) -
+         * không có gì để refresh.
+         */
+        return 0;
+    }
+
+    char url[MAX_URL_LEN] = {0};
+    char key[MAX_KEY_LEN] = {0};
+
+    settings_get_supabase_config(
+        url, sizeof(url),
+        key, sizeof(key)
+    );
+
+    char refresh_esc[600] = {0};
+
+    json_escape(refresh_token, refresh_esc, sizeof(refresh_esc));
+
+    char body[700];
+
+    snprintf(
+        body,
+        sizeof(body),
+        "{\"refresh_token\":\"%s\"}",
+        refresh_esc
+    );
+
+    char response[4096] = {0};
+    DWORD status = 0;
+
+    if (
+        !do_auth_post(
+            url, key,
+            L"/auth/v1/token?grant_type=refresh_token",
+            body,
+            response,
+            sizeof(response),
+            &status
+        )
+    )
+    {
+        wprintf(L"[AUTH][%hs] Khong the ket noi de refresh token\n", ERR_AUTH_NETWORK);
+        return 0;
+    }
+
+    if (status < 200 || status >= 300)
+    {
+        /*
+         * refresh_token cũng đã hết hạn/bị thu hồi (hoặc bị
+         * vô hiệu do project đổi JWT signing key) - phải
+         * đăng nhập lại thủ công. Xoá session cũ để tránh
+         * cứ thử refresh một token chắc chắn hỏng mỗi vòng
+         * sync tiếp theo.
+         */
+        wprintf(
+            L"[AUTH][%hs] Refresh token bi tu choi (HTTP %lu): %hs\n",
+            ERR_AUTH_REFRESH_FAIL,
+            status,
+            response
+        );
+
+        auth_logout();
+
+        return 0;
+    }
+
+    AuthSession s;
+    memset(&s, 0, sizeof(s));
+
+    if (
+        !json_extract_string(response, "access_token", s.access_token, sizeof(s.access_token))
+    )
+    {
+        wprintf(L"[AUTH][%hs] Response refresh khong co access_token\n", ERR_AUTH_REFRESH_FAIL);
+        return 0;
+    }
+
+    json_extract_string(response, "refresh_token", s.refresh_token, sizeof(s.refresh_token));
+    json_extract_string(response, "id", s.user_id, sizeof(s.user_id));
+    json_extract_string(response, "email", s.email, sizeof(s.email));
+
+    ensure_lock();
+
+    EnterCriticalSection(&g_session_lock);
+
+    /*
+     * Một số phiên bản GoTrue không trả lại user_id/email
+     * trong response refresh (chỉ access_token/refresh_token) -
+     * giữ nguyên giá trị cũ trong trường hợp đó thay vì ghi đè
+     * bằng chuỗi rỗng.
+     */
+    if (s.user_id[0] == '\0')
+        snprintf(s.user_id, sizeof(s.user_id), "%s", g_session.user_id);
+
+    if (s.email[0] == '\0')
+        snprintf(s.email, sizeof(s.email), "%s", g_session.email);
+
+    /*
+     * Nếu Supabase không cấp refresh_token mới trong response
+     * (một số cấu hình vẫn dùng lại refresh_token cũ), giữ lại
+     * cái đang có thay vì xoá mất.
+     */
+    if (s.refresh_token[0] == '\0')
+        snprintf(s.refresh_token, sizeof(s.refresh_token), "%s", g_session.refresh_token);
+
+    s.logged_in = 1;
+    g_session = s;
+
+    LeaveCriticalSection(&g_session_lock);
+
+    save_session_to_disk(&s);
+
+    wprintf(L"[AUTH] Refresh token thanh cong, da co access_token moi\n");
+
+    return 1;
+}
+
 int auth_load_session(void)
 {
     ensure_lock();

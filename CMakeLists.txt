@@ -54,6 +54,8 @@ add_executable(JustInTime WIN32
         src/supabasesetupdialog.cpp
         "include/remoteviewdialog.h"
         src/remoteviewdialog.cpp
+        "include/updatechecker.h"
+        src/updatechecker.cpp
 )
 
 include_directories(third_party)

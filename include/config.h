@@ -5,6 +5,17 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+/*
+ * Thông tin phiên bản, hiển thị ở tray > About và dùng để so
+ * sánh với bảng "app_releases" trên Supabase khi kiểm tra
+ * cập nhật (xem updatechecker.cpp). Nhớ tăng số này mỗi khi
+ * phát hành bản mới, khớp với cột "version" bạn thêm vào
+ * bảng app_releases.
+ */
+#define APP_VERSION   "1.0.0"
+#define APP_PUBLISHER "LoPhong Corporation"
+#define APP_WEBSITE   "https://lonamphong.com"
+
 #define SUPABASE_URL \
 "https://crdvfasjtrfrasqehwkc.supabase.co"
 
@@ -41,6 +52,6 @@
  * Số ngày giữ lại bản ghi ĐÃ đồng bộ trong DB local
  * trước khi dọn dẹp (không bao giờ xóa bản ghi chưa synced).
  */
-#define RETENTION_DAYS 30
+#define RETENTION_DAYS 100
 
 #endif
